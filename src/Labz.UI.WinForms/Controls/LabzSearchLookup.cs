@@ -186,12 +186,12 @@ public class LabzSearchLookup : UserControl
 
     private async Task SearchOnEventAsync()
     {
+        var expectedVersion = _version + 2;
         try { await SearchAsync(); }
         catch (OperationCanceledException) { /* A newer search superseded this one. */ }
         catch (Exception ex)
         {
-            if (!_disposed && !_query.IsDisposed && !IsSearching && _pending is null &&
-                ex is not ObjectDisposedException)
+            if (!_disposed && !_query.IsDisposed && expectedVersion == _version)
             {
                 ShowStatus("Search failed. Try again.");
                 SearchFailed?.Invoke(this, new LabzLookupSearchFailedEventArgs(ex));
