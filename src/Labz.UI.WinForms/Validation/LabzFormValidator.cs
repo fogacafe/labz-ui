@@ -98,18 +98,25 @@ public sealed class LabzFormValidator : IDisposable
         public async Task<ValidationResult> ValidateAsync(CancellationToken cancellationToken)
         {
             _pending?.Cancel();
-            _pending?.Dispose();
             var source = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             _pending = source;
             var version = ++_version;
             var text = _control.Text;
-            var result = await _validator.ValidateAsync(text, source.Token);
-            if (version == _version && !_control.IsDisposed && !source.IsCancellationRequested)
+            try
             {
-                var message = result.Messages.OrderByDescending(x => x.Severity).FirstOrDefault();
-                _control.ApplyValidation(message);
+                var result = await _validator.ValidateAsync(text, source.Token);
+                if (version == _version && !_control.IsDisposed && !source.IsCancellationRequested)
+                {
+                    var message = result.Messages.OrderByDescending(x => x.Severity).FirstOrDefault();
+                    _control.ApplyValidation(message);
+                }
+                return result;
             }
-            return result;
+            finally
+            {
+                if (ReferenceEquals(_pending, source)) _pending = null;
+                source.Dispose();
+            }
         }
 
         public void Dispose()
@@ -117,7 +124,6 @@ public sealed class LabzFormValidator : IDisposable
             _control.TextChanged -= OnChanged;
             _control.Leave -= OnBlurred;
             _pending?.Cancel();
-            _pending?.Dispose();
         }
     }
 }
