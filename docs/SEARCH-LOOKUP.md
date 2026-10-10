@@ -39,5 +39,4 @@ Typing debounces searches; Enter and the search button trigger immediate search.
 The provider receives the current query, maximum result count and cancellation token.
 A new query cancels the previous request; stale successful results are ignored.
 Double-click or Enter on a result selects it. Optional columns render in a native grid.
-The results grid is embedded in the control in this first version; a floating popup,
-loading/empty states, keyboard accessibility audit and designer polish are future work.
+The results grid is hosted in a floating popup, so the control occupies only one input row.\nThe popup shows searching, no-results and failure states. Escape closes it; Down enters\nthe results, and Enter or double-click selects a row. A full keyboard accessibility\naudit and Designer polish are still future work.
