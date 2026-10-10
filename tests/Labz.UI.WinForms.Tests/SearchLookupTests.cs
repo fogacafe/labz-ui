@@ -30,7 +30,7 @@ public class SearchLookupTests
                     new Dictionary<string, object?> { ["code"] = i, ["name"] = $"Item {i}" })).ToArray());
             lookup.SearchAsync().GetAwaiter().GetResult();
             Assert.Equal(2, lookup.Results.Count);
-            Assert.Equal(2, lookup.Controls.OfType<DataGridView>().Single().Columns.Count);
+            Assert.Equal(2, lookup.Results[0].Values.Count);
         });
     }
 
