@@ -15,14 +15,18 @@ internal static class Program
 
 public sealed class ShowcaseForm : Form
 {
-    private readonly LabzButton _button = new() { Text = "Primary button", Location = new Point(24, 60) };
-    private readonly LabzButton _toggle = new() { Text = "Toggle theme", Location = new Point(174, 60), Width = 140 };
+    private readonly LabzButton _solid = new() { Text = "Solid", Variant = LabzButtonVariant.Solid, Location = new Point(24, 58) };
+    private readonly LabzButton _outline = new() { Text = "Outline", Variant = LabzButtonVariant.Outline, Location = new Point(174, 58) };
+    private readonly LabzButton _ghost = new() { Text = "Ghost", Variant = LabzButtonVariant.Ghost, Location = new Point(324, 58) };
+    private readonly LabzButton _disabled = new() { Text = "Disabled", Enabled = false, Location = new Point(24, 120) };
+    private readonly LabzButton _large = new() { Text = "Large", ButtonSize = LabzButtonSize.Large, Location = new Point(174, 120) };
+    private readonly LabzButton _toggle = new() { Text = "Toggle theme", Location = new Point(24, 200), Width = 150 };
 
     public ShowcaseForm()
     {
-        Text = "Labz UI Showcase";
-        ClientSize = new Size(450, 170);
-        Controls.AddRange([_button, _toggle]);
+        Text = "Labz UI Showcase — Buttons";
+        ClientSize = new Size(490, 270);
+        Controls.AddRange([_solid, _outline, _ghost, _disabled, _large, _toggle]);
         _toggle.Click += (_, _) => UiThemeManager.Apply(
             ReferenceEquals(UiThemeManager.Current, UiTheme.Light) ? UiTheme.Dark : UiTheme.Light);
         UiThemeManager.ThemeChanged += RefreshTheme;
