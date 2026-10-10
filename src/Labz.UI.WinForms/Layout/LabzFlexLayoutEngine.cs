@@ -10,6 +10,87 @@ public enum LabzAlignItems { Start, Center, End, Stretch }
 /// <summary>Shared deterministic flex-like layout calculations for Labz containers.</summary>
 public static class LabzFlexLayoutEngine
 {
+    /// <summary>Arranges one flex line using weighted growth and shrinkage.</summary>
+    /// <remarks>For wrapped layouts, callers should arrange each line separately.</remarks>
+    public static IReadOnlyList<Rectangle> ArrangeFlexible(
+        IReadOnlyList<Size> sizes, Rectangle bounds, LabzDirection direction,
+        int gap, LabzJustifyContent justify, LabzAlignItems align,
+        IReadOnlyList<double> grow, IReadOnlyList<double> shrink)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(gap);
+        if (sizes.Count != grow.Count || sizes.Count != shrink.Count)
+            throw new ArgumentException("Size and weight counts must match.");
+        if (grow.Any(x => !double.IsFinite(x) || x < 0) ||
+            shrink.Any(x => !double.IsFinite(x) || x < 0))
+            throw new ArgumentOutOfRangeException(nameof(grow), "Flex weights must be finite and non-negative.");
+        if (sizes.Count == 0) return [];
+        var horizontal = direction == LabzDirection.Horizontal;
+        var limit = Math.Max(0, horizontal ? bounds.Width : bounds.Height);
+        var main = sizes.Select(s => (double)Math.Max(0, horizontal ? s.Width : s.Height)).ToArray();
+        var available = limit - gap * (sizes.Count - 1) - main.Sum();
+        if (available > 0 && grow.Sum() > 0)
+        {
+            var total = grow.Sum();
+            for (var i = 0; i < main.Length; i++) main[i] += available * grow[i] / total;
+        }
+        else if (available < 0)
+        {
+            // CSS-style shrink factors are weighted by the item's base size.
+            var factors = main.Select((size, i) => size * shrink[i]).ToArray();
+            var deficit = -available;
+            var active = Enumerable.Range(0, main.Length).Where(i => factors[i] > 0).ToList();
+            while (deficit > 0.0001 && active.Count > 0)
+            {
+                var total = active.Sum(i => factors[i]);
+                var consumed = 0d;
+                foreach (var i in active)
+                {
+                    var reduction = Math.Min(main[i], deficit * factors[i] / total);
+                    main[i] -= reduction;
+                    consumed += reduction;
+                }
+                deficit -= consumed;
+                active.RemoveAll(i => main[i] < 0.0001);
+            }
+        }
+        var free = Math.Max(0, limit - gap * (sizes.Count - 1) - main.Sum());
+        var offset = justify switch
+        {
+            LabzJustifyContent.Center => free / 2,
+            LabzJustifyContent.End => free,
+            LabzJustifyContent.SpaceAround => free / (2 * sizes.Count),
+            LabzJustifyContent.SpaceEvenly => free / (sizes.Count + 1),
+            _ => 0d
+        };
+        var spacing = justify switch
+        {
+            LabzJustifyContent.SpaceBetween when sizes.Count > 1 => gap + free / (sizes.Count - 1),
+            LabzJustifyContent.SpaceAround => gap + free / sizes.Count,
+            LabzJustifyContent.SpaceEvenly => gap + free / (sizes.Count + 1),
+            _ => (double)gap
+        };
+        var result = new Rectangle[sizes.Count];
+        var crossLimit = Math.Max(0, horizontal ? bounds.Height : bounds.Width);
+        for (var i = 0; i < sizes.Count; i++)
+        {
+            var cross = Math.Max(0, horizontal ? sizes[i].Height : sizes[i].Width);
+            var crossOffset = align switch
+            {
+                LabzAlignItems.Center => (crossLimit - cross) / 2,
+                LabzAlignItems.End => crossLimit - cross,
+                _ => 0
+            };
+            if (align == LabzAlignItems.Stretch) cross = crossLimit;
+            var start = (int)Math.Round(offset);
+            var end = (int)Math.Round(offset + main[i]);
+            result[i] = horizontal
+                ? new Rectangle(bounds.X + start, bounds.Y + crossOffset, Math.Max(0, end - start), cross)
+                : new Rectangle(bounds.X + crossOffset, bounds.Y + start, cross, Math.Max(0, end - start));
+            offset += main[i] + spacing;
+        }
+        return result;
+    }
+
     public static IReadOnlyList<Rectangle> Arrange(
         IReadOnlyList<Size> sizes, Rectangle bounds, LabzDirection direction,
         int gap, bool wrap, LabzJustifyContent justify, LabzAlignItems align)

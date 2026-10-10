@@ -13,6 +13,7 @@ public class LabzStackPanel : Panel
     private int _spacing = 8;
     private bool _wrap;
     private bool _arranging;
+    private readonly Dictionary<Control, (double Grow, double Shrink, Size Basis)> _flex = [];
 
     public LabzStackPanel()
     {
@@ -60,6 +61,23 @@ public class LabzStackPanel : Panel
         set { _wrap = value; PerformLayout(); }
     }
 
+    /// <summary>Sets per-child flex factors; default is grow=0, shrink=1.</summary>
+    public void SetFlex(Control child, double grow = 0, double shrink = 1)
+    {
+        ArgumentNullException.ThrowIfNull(child);
+        if (!double.IsFinite(grow) || grow < 0 || !double.IsFinite(shrink) || shrink < 0)
+            throw new ArgumentOutOfRangeException(nameof(grow));
+        if (child.Parent != this) throw new ArgumentException("Control must belong to this panel.", nameof(child));
+        _flex[child] = (grow, shrink, child.Size);
+        PerformLayout();
+    }
+
+    protected override void OnControlRemoved(ControlEventArgs e)
+    {
+        base.OnControlRemoved(e);
+        _flex.Remove(e.Control);
+    }
+
     protected override void OnLayout(LayoutEventArgs levent)
     {
         if (_arranging) return;
@@ -68,11 +86,19 @@ public class LabzStackPanel : Panel
         {
             // Respect designer ordering (Controls order), visibility and child margins.
             var children = Controls.Cast<Control>().Where(c => c.Visible && !c.IsDisposed).Reverse().ToArray();
-            var sizes = children.Select(c => new Size(
-                c.Width + c.Margin.Horizontal, c.Height + c.Margin.Vertical)).ToArray();
+            var sizes = children.Select(c =>
+            {
+                var basis = _flex.TryGetValue(c, out var factors) ? factors.Basis : c.Size;
+                return new Size(basis.Width + c.Margin.Horizontal, basis.Height + c.Margin.Vertical);
+            }).ToArray();
             var bounds = DisplayRectangle;
-            var rectangles = LabzFlexLayoutEngine.Arrange(sizes, bounds, Direction,
-                Spacing, Wrap, JustifyContent, AlignItems);
+            var rectangles = Wrap
+                ? LabzFlexLayoutEngine.Arrange(sizes, bounds, Direction,
+                    Spacing, true, JustifyContent, AlignItems)
+                : LabzFlexLayoutEngine.ArrangeFlexible(sizes, bounds, Direction,
+                    Spacing, JustifyContent, AlignItems,
+                    children.Select(c => _flex.TryGetValue(c, out var f) ? f.Grow : 0d).ToArray(),
+                    children.Select(c => _flex.TryGetValue(c, out var f) ? f.Shrink : 1d).ToArray());
             SuspendLayout();
             try
             {
