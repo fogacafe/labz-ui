@@ -119,8 +119,6 @@ public class LabzTextBox : UserControl
         ValidationMessage = message?.Message ?? string.Empty;
     }
 
-    public override bool Focus() => _editor?.Focus() ?? base.Focus();
-
     protected override void OnEnter(EventArgs e)
     {
         base.OnEnter(e);
