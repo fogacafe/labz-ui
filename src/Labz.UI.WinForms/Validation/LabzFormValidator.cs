@@ -90,12 +90,13 @@ public sealed class LabzFormValidator : IDisposable
 
         private async Task ValidateOnEventAsync(TimeSpan delay)
         {
+            var expectedVersion = _version + 1;
             try { await ValidateCoreAsync(CancellationToken.None, delay); }
             catch (OperationCanceledException) { /* Superseded by newer input. */ }
             catch (Exception)
             {
-                // Event handlers cannot return errors to callers. Show a safe field error.
-                if (!_disposed && !_control.IsDisposed)
+                // Only the latest validation may update the field, including failures.
+                if (!_disposed && expectedVersion == _version && !_control.IsDisposed)
                     _control.ApplyValidation(new ValidationMessage(_validator.FieldName,
                         "Validation could not be completed", ValidationSeverity.Error));
             }
