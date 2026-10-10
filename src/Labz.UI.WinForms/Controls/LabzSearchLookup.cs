@@ -33,6 +33,8 @@ public class LabzSearchLookup : UserControl
 
     public LabzSearchLookup()
     {
+        _query.AccessibleName = "Lookup search";
+        _results.AccessibleName = "Lookup results";
         _timer.Interval = _debounceMilliseconds;
         _timer.Tick += (_, _) => { _timer.Stop(); _ = SearchOnEventAsync(); };
         _query.TextChanged += (_, _) =>
@@ -50,7 +52,9 @@ public class LabzSearchLookup : UserControl
             if (e.KeyCode == Keys.Down && _popup.Visible && _results.Rows.Count > 0)
             {
                 _results.Focus();
+                if (_results.CurrentCell is null) _results.CurrentCell = _results.Rows[0].Cells[0];
                 e.Handled = true;
+                e.SuppressKeyPress = true;
             }
             if (e.KeyCode == Keys.Escape) _popup.Close();
         };
@@ -182,12 +186,12 @@ public class LabzSearchLookup : UserControl
 
     private async Task SearchOnEventAsync()
     {
-        var version = _version;
         try { await SearchAsync(); }
         catch (OperationCanceledException) { /* A newer search superseded this one. */ }
         catch (Exception ex)
         {
-            if (!_disposed && !_query.IsDisposed && _version == version + 2)
+            if (!_disposed && !_query.IsDisposed && !IsSearching && _pending is null &&
+                ex is not ObjectDisposedException)
             {
                 ShowStatus("Search failed. Try again.");
                 SearchFailed?.Invoke(this, new LabzLookupSearchFailedEventArgs(ex));
@@ -276,7 +280,17 @@ public class LabzSearchLookup : UserControl
     private void OpenPopup()
     {
         if (_disposed || !IsHandleCreated) return;
-        if (!_popup.Visible) _popup.Show(this, new Point(0, Height));
+        var screen = Screen.FromControl(this).WorkingArea;
+        var anchor = PointToScreen(Point.Empty);
+        var popupHeight = _popupPanel.Height;
+        var popupWidth = Math.Min(_popupPanel.Width, screen.Width);
+        var x = Math.Clamp(anchor.X, screen.Left, Math.Max(screen.Left, screen.Right - popupWidth));
+        var below = screen.Bottom - (anchor.Y + Height);
+        var above = anchor.Y - screen.Top;
+        var y = below >= popupHeight || below >= above
+            ? Math.Min(anchor.Y + Height, screen.Bottom - popupHeight)
+            : Math.Max(screen.Top, anchor.Y - popupHeight);
+        if (!_popup.Visible) _popup.Show(new Point(x, Math.Max(screen.Top, y)));
     }
 
     private void ApplyTheme()
