@@ -11,5 +11,6 @@
   <Folder Name="/tests/">
     <Project Path="tests/Labz.UI.Core.Tests/Labz.UI.Core.Tests.csproj" />
     <Project Path="tests/Labz.UI.Validation.Tests/Labz.UI.Validation.Tests.csproj" />
+    <Project Path="tests/Labz.UI.WinForms.Tests/Labz.UI.WinForms.Tests.csproj" />
   </Folder>
 </Solution>
