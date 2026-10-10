@@ -34,9 +34,9 @@ protected override void Dispose(bool disposing)
 ```
 
 Triggers: `Change`, `Blur`, both, or `None` (submit-only).
-Change validation currently runs for every keystroke; use Blur for expensive remote checks.
+Change validation is debounced by default (350 ms) to avoid a remote request on every keystroke. Blur and explicit submit bypass the delay. Customize the delay with \`debounce: TimeSpan.FromMilliseconds(600)\` in \`Register\`.
 The adapter cancels superseded validations and prevents older results from repainting a field.
 The consuming form should dispose the validator. Designer-generated forms should integrate
 disposal into their existing Dispose implementation, rather than declaring a second override.
 
-Planned: debounce, cross-field rules, per-form parallelism, improved error handling and richer messages.
+Planned: cross-field rules, per-form parallelism, improved error handling and richer messages.
