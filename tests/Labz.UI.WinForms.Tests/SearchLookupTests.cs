@@ -34,6 +34,28 @@ public class SearchLookupTests
         });
     }
 
+    [Fact]
+    public void SearchInputAndResultsHaveAccessibleNames()
+    {
+        RunSta(() =>
+        {
+            using var lookup = new LabzSearchLookup();
+            Assert.Equal("Lookup search", lookup.Controls.OfType<TextBox>().Single().AccessibleName);
+            Assert.Equal("Search", lookup.Controls.OfType<Button>().Single().AccessibleName);
+        });
+    }
+
+    [Fact]
+    public void InvalidDebounceAndResultLimitAreRejected()
+    {
+        RunSta(() =>
+        {
+            using var lookup = new LabzSearchLookup();
+            Assert.Throws<ArgumentOutOfRangeException>(() => lookup.MaxResults = 0);
+            Assert.Throws<ArgumentOutOfRangeException>(() => lookup.DebounceMilliseconds = 0);
+        });
+    }
+
     private static void RunSta(Action action)
     {
         Exception? error = null;
