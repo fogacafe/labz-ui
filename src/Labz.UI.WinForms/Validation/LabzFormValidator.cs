@@ -22,7 +22,8 @@ public sealed class LabzFormValidator : IDisposable
 
     public LabzFormValidator Register(
         LabzTextBox control, FieldValidator validator,
-        ValidationTrigger triggers = ValidationTrigger.Blur)
+        ValidationTrigger triggers = ValidationTrigger.Blur,
+        TimeSpan? debounce = null)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentNullException.ThrowIfNull(control);
@@ -30,7 +31,9 @@ public sealed class LabzFormValidator : IDisposable
         if (_registrations.ContainsKey(control))
             throw new InvalidOperationException("The input is already registered.");
 
-        var registration = new Registration(control, validator, triggers);
+        var delay = debounce ?? TimeSpan.FromMilliseconds(350);
+        if (delay < TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(debounce));
+        var registration = new Registration(control, validator, triggers, delay);
         _registrations.Add(control, registration);
         registration.Attach();
         return this;
@@ -65,12 +68,15 @@ public sealed class LabzFormValidator : IDisposable
         private readonly ValidationTrigger _triggers;
         private CancellationTokenSource? _pending;
         private long _version;
+        private readonly TimeSpan _debounce;
+        private bool _disposed;
 
-        public Registration(LabzTextBox control, FieldValidator validator, ValidationTrigger triggers)
+        public Registration(LabzTextBox control, FieldValidator validator, ValidationTrigger triggers, TimeSpan debounce)
         {
             _control = control;
             _validator = validator;
             _triggers = triggers;
+            _debounce = debounce;
         }
 
         public void Attach()
@@ -79,24 +85,28 @@ public sealed class LabzFormValidator : IDisposable
             if (_triggers.HasFlag(ValidationTrigger.Blur)) _control.Leave += OnBlurred;
         }
 
-        private void OnChanged(object? sender, EventArgs e) => _ = ValidateOnEventAsync();
-        private void OnBlurred(object? sender, EventArgs e) => _ = ValidateOnEventAsync();
+        private void OnChanged(object? sender, EventArgs e) => _ = ValidateOnEventAsync(_debounce);
+        private void OnBlurred(object? sender, EventArgs e) => _ = ValidateOnEventAsync(TimeSpan.Zero);
 
-        private async Task ValidateOnEventAsync()
+        private async Task ValidateOnEventAsync(TimeSpan delay)
         {
-            try { await ValidateAsync(CancellationToken.None); }
+            try { await ValidateCoreAsync(CancellationToken.None, delay); }
             catch (OperationCanceledException) { /* Superseded by newer input. */ }
             catch (Exception)
             {
                 // Event handlers cannot return errors to callers. Show a safe field error.
-                if (!_control.IsDisposed)
+                if (!_disposed && !_control.IsDisposed)
                     _control.ApplyValidation(new ValidationMessage(_validator.FieldName,
                         "Validation could not be completed", ValidationSeverity.Error));
             }
         }
 
-        public async Task<ValidationResult> ValidateAsync(CancellationToken cancellationToken)
+        public Task<ValidationResult> ValidateAsync(CancellationToken cancellationToken) =>
+            ValidateCoreAsync(cancellationToken, TimeSpan.Zero);
+
+        private async Task<ValidationResult> ValidateCoreAsync(CancellationToken cancellationToken, TimeSpan delay)
         {
+            ObjectDisposedException.ThrowIf(_disposed, this);
             _pending?.Cancel();
             var source = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             _pending = source;
@@ -104,8 +114,10 @@ public sealed class LabzFormValidator : IDisposable
             var text = _control.Text;
             try
             {
+                if (delay > TimeSpan.Zero)
+                    await Task.Delay(delay, source.Token);
                 var result = await _validator.ValidateAsync(text, source.Token);
-                if (version == _version && !_control.IsDisposed && !source.IsCancellationRequested)
+                if (!_disposed && version == _version && !_control.IsDisposed && !source.IsCancellationRequested)
                 {
                     var message = result.Messages.OrderByDescending(x => x.Severity).FirstOrDefault();
                     _control.ApplyValidation(message);
@@ -121,6 +133,8 @@ public sealed class LabzFormValidator : IDisposable
 
         public void Dispose()
         {
+            _disposed = true;
+            ++_version;
             _control.TextChanged -= OnChanged;
             _control.Leave -= OnBlurred;
             _pending?.Cancel();
