@@ -14,6 +14,8 @@ namespace Labz.UI.WinForms.Controls;
 public class LabzTextBox : UserControl
 {
     private readonly TextBox _editor;
+    private readonly Button _searchButton;
+    private bool _showSearchButton;
     private ValidationSeverity _validationState;
     private string _validationMessage = string.Empty;
     private bool _hovered;
@@ -35,6 +37,18 @@ public class LabzTextBox : UserControl
         _editor.Leave += (_, _) => Invalidate();
         _editor.MouseEnter += (_, _) => { _hovered = true; Invalidate(); };
         _editor.MouseLeave += (_, _) => { _hovered = false; Invalidate(); };
+        _searchButton = new Button
+        {
+            Text = "⌕",
+            AccessibleName = "Search",
+            TabStop = true,
+            FlatStyle = FlatStyle.Flat,
+            Visible = false,
+            Cursor = Cursors.Hand
+        };
+        _searchButton.FlatAppearance.BorderSize = 0;
+        _searchButton.Click += (_, _) => SearchRequested?.Invoke(this, EventArgs.Empty);
+        Controls.Add(_searchButton);
         Controls.Add(_editor);
         Size = new Size(240, 42);
         UiThemeManager.ThemeChanged += OnThemeChanged;
@@ -49,6 +63,17 @@ public class LabzTextBox : UserControl
         get => _editor?.Text ?? string.Empty;
         set { if (_editor is not null) _editor.Text = value; }
     }
+
+    [Category("Behavior")]
+    [DefaultValue(false)]
+    public bool ShowSearchButton
+    {
+        get => _showSearchButton;
+        set { _showSearchButton = value; _searchButton.Visible = value; LayoutEditor(); Invalidate(); }
+    }
+
+    [Category("Action")]
+    public event EventHandler? SearchRequested;
 
     [Category("Appearance")]
     [DefaultValue("")]
@@ -135,6 +160,7 @@ public class LabzTextBox : UserControl
     {
         base.OnEnabledChanged(e);
         if (_editor is not null) _editor.Enabled = Enabled;
+        if (_searchButton is not null) _searchButton.Enabled = Enabled;
         Invalidate();
     }
 
@@ -186,6 +212,8 @@ public class LabzTextBox : UserControl
         if (_editor is null) return;
         _editor.BackColor = UiThemeManager.Current.Surface;
         _editor.ForeColor = UiThemeManager.Current.Foreground;
+        _searchButton.BackColor = UiThemeManager.Current.Surface;
+        _searchButton.ForeColor = UiThemeManager.Current.Foreground;
         Invalidate();
     }
 
@@ -194,7 +222,13 @@ public class LabzTextBox : UserControl
         if (_editor is null) return;
         var hasMessage = _showMessage && !string.IsNullOrWhiteSpace(_validationMessage);
         var inputHeight = Math.Max(28, Height - (hasMessage ? 22 : 0));
-        _editor.Width = Math.Max(1, Width - HorizontalPadding * 2);
+        var searchWidth = _showSearchButton ? 30 : 0;
+        _editor.Width = Math.Max(1, Width - HorizontalPadding * 2 - searchWidth);
+        if (_searchButton is not null)
+        {
+            _searchButton.Bounds = new Rectangle(Math.Max(0, Width - HorizontalPadding - 30),
+                Math.Max(2, (inputHeight - 28) / 2), 30, 28);
+        }
         _editor.Location = new Point(HorizontalPadding, Math.Max(3, (inputHeight - _editor.Height) / 2));
     }
 
