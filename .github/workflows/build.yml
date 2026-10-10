@@ -4,18 +4,46 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   build:
+    name: Build, test and package
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
+          cache: true
+          cache-dependency-path: '**/packages.lock.json'
+        continue-on-error: true
       - name: Restore
         run: dotnet restore Labz.UI.slnx
       - name: Build
         run: dotnet build Labz.UI.slnx --no-restore --configuration Release
       - name: Test
         run: dotnet test Labz.UI.slnx --no-build --configuration Release
+      - name: Pack libraries
+        shell: pwsh
+        run: |
+          $projects = @(
+            'src/Labz.UI.Core/Labz.UI.Core.csproj',
+            'src/Labz.UI.Rendering/Labz.UI.Rendering.csproj',
+            'src/Labz.UI.WinForms/Labz.UI.WinForms.csproj',
+            'src/Labz.UI.Validation/Labz.UI.Validation.csproj'
+          )
+          foreach ($project in $projects) {
+            dotnet pack $project --configuration Release --no-build --output ./artifacts/nuget -p:PackageVersion=0.1.0-preview.1
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+      - name: Upload NuGet packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: labz-ui-nuget
+          path: artifacts/nuget/*.nupkg
+          if-no-files-found: error
+          retention-days: 14
