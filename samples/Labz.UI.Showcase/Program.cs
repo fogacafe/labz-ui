@@ -15,6 +15,10 @@ internal static class Program
 
 public sealed class ShowcaseForm : Form
 {
+    private readonly LabzTextBox _normal = new() { Name = "Name", PlaceholderText = "Your name", Location = new Point(24, 270), Size = new Size(205, 44) };
+    private readonly LabzTextBox _error = new() { Name = "Ticker", PlaceholderText = "Ticker", ValidationState = Labz.UI.Validation.ValidationSeverity.Error, ValidationMessage = "Ticker is required", Location = new Point(254, 270), Size = new Size(205, 70) };
+    private readonly LabzTextBox _warning = new() { PlaceholderText = "Warning state", ValidationState = Labz.UI.Validation.ValidationSeverity.Warning, ValidationMessage = "Check this value", Location = new Point(24, 355), Size = new Size(205, 70) };
+    private readonly LabzTextBox _success = new() { PlaceholderText = "Success state", ValidationState = Labz.UI.Validation.ValidationSeverity.Success, ValidationMessage = "Looks good", Location = new Point(254, 355), Size = new Size(205, 70) };
     private readonly LabzButton _solid = new() { Text = "Solid", Variant = LabzButtonVariant.Solid, Location = new Point(24, 58) };
     private readonly LabzButton _outline = new() { Text = "Outline", Variant = LabzButtonVariant.Outline, Location = new Point(174, 58) };
     private readonly LabzButton _ghost = new() { Text = "Ghost", Variant = LabzButtonVariant.Ghost, Location = new Point(324, 58) };
@@ -25,8 +29,8 @@ public sealed class ShowcaseForm : Form
     public ShowcaseForm()
     {
         Text = "Labz UI Showcase — Buttons";
-        ClientSize = new Size(490, 270);
-        Controls.AddRange([_solid, _outline, _ghost, _disabled, _large, _toggle]);
+        ClientSize = new Size(490, 455);
+        Controls.AddRange([_solid, _outline, _ghost, _disabled, _large, _toggle, _normal, _error, _warning, _success]);
         _toggle.Click += (_, _) => UiThemeManager.Apply(
             ReferenceEquals(UiThemeManager.Current, UiTheme.Light) ? UiTheme.Dark : UiTheme.Light);
         UiThemeManager.ThemeChanged += RefreshTheme;
