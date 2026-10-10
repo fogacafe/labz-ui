@@ -17,6 +17,9 @@ public class LabzSearchLookup : UserControl
         AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
         Visible = false, TabStop = true
     };
+    private readonly Panel _popupPanel = new() { Size = new Size(360, 220) };
+    private readonly Label _status = new() { Dock = DockStyle.Top, Height = 30, TextAlign = ContentAlignment.MiddleLeft, Visible = false };
+    private readonly ToolStripDropDown _popup = new() { AutoClose = true, Padding = Padding.Empty };
     private readonly System.Windows.Forms.Timer _timer = new();
     private CancellationTokenSource? _pending;
     private long _version;
@@ -25,6 +28,7 @@ public class LabzSearchLookup : UserControl
     private IReadOnlyList<LabzLookupColumn> _columns = [];
     private LabzLookupItem? _selectedItem;
     private int _maxResults = 10;
+    private bool _settingSelection;
     private int _debounceMilliseconds = 350;
 
     public LabzSearchLookup()
@@ -33,19 +37,22 @@ public class LabzSearchLookup : UserControl
         _timer.Tick += (_, _) => { _timer.Stop(); _ = SearchOnEventAsync(); };
         _query.TextChanged += (_, _) =>
         {
+            if (_settingSelection) return;
+            _selectedItem = null;
             CancelPending();
             _timer.Stop();
+            _popup.Close();
             if (SearchProvider is not null) _timer.Start();
         };
         _query.KeyDown += (_, e) =>
         {
             if (e.KeyCode == Keys.Enter) { e.SuppressKeyPress = true; _ = SearchOnEventAsync(); }
-            if (e.KeyCode == Keys.Down && _results.Visible && _results.Rows.Count > 0)
+            if (e.KeyCode == Keys.Down && _popup.Visible && _results.Rows.Count > 0)
             {
                 _results.Focus();
                 e.Handled = true;
             }
-            if (e.KeyCode == Keys.Escape) _results.Visible = false;
+            if (e.KeyCode == Keys.Escape) _popup.Close();
         };
         _search.Click += (_, _) => _ = SearchOnEventAsync();
         _results.CellDoubleClick += (_, e) => SelectRow(e.RowIndex);
@@ -57,10 +64,21 @@ public class LabzSearchLookup : UserControl
                 e.SuppressKeyPress = true;
                 SelectRow(_results.CurrentCell?.RowIndex ?? -1);
             }
-            if (e.KeyCode == Keys.Escape) { _results.Visible = false; _query.Focus(); }
+            if (e.KeyCode == Keys.Escape) { _popup.Close(); _query.Focus(); }
         };
-        Controls.AddRange([_query, _search, _results]);
-        Size = new Size(360, 240);
+        _results.Dock = DockStyle.Fill;
+        _results.Visible = true;
+        _popupPanel.Controls.Add(_results);
+        _popupPanel.Controls.Add(_status);
+        _popup.Items.Add(new ToolStripControlHost(_popupPanel)
+        {
+            AutoSize = false,
+            Size = _popupPanel.Size,
+            Margin = Padding.Empty,
+            Padding = Padding.Empty
+        });
+        Controls.AddRange([_query, _search]);
+        Size = new Size(360, 36);
         UiThemeManager.ThemeChanged += OnThemeChanged;
         ApplyTheme();
         LayoutChildren();
@@ -123,6 +141,12 @@ public class LabzSearchLookup : UserControl
     }
 
     public event EventHandler? SelectionChanged;
+
+    [Browsable(false)]
+    public bool IsPopupOpen => _popup.Visible;
+
+    [Browsable(false)]
+    public bool IsSearching { get; private set; }
     public event EventHandler<LabzLookupSearchFailedEventArgs>? SearchFailed;
 
     public async Task SearchAsync(CancellationToken cancellationToken = default)
@@ -136,6 +160,8 @@ public class LabzSearchLookup : UserControl
         _pending = source;
         var version = ++_version;
         var query = _query.Text;
+        IsSearching = true;
+        ShowStatus("Searching...");
         try
         {
             var items = await provider(query, MaxResults, source.Token);
@@ -146,18 +172,26 @@ public class LabzSearchLookup : UserControl
         }
         finally
         {
-            if (ReferenceEquals(_pending, source)) _pending = null;
+            if (ReferenceEquals(_pending, source))
+            {
+                _pending = null;
+                IsSearching = false;
+            }
         }
     }
 
     private async Task SearchOnEventAsync()
     {
+        var version = _version;
         try { await SearchAsync(); }
         catch (OperationCanceledException) { /* A newer search superseded this one. */ }
         catch (Exception ex)
         {
-            if (!_disposed && !_query.IsDisposed)
+            if (!_disposed && !_query.IsDisposed && _version == version + 2)
+            {
+                ShowStatus("Search failed. Try again.");
                 SearchFailed?.Invoke(this, new LabzLookupSearchFailedEventArgs(ex));
+            }
         }
     }
 
@@ -165,6 +199,7 @@ public class LabzSearchLookup : UserControl
     {
         ++_version;
         _pending?.Cancel();
+        IsSearching = false;
     }
 
     private void BuildColumns()
@@ -191,8 +226,13 @@ public class LabzSearchLookup : UserControl
                 : _columns.Select(column => item.Values.TryGetValue(column.Key, out var value) ? value : null).ToArray();
             _results.Rows.Add(values);
         }
-        _results.Visible = _items.Count > 0;
-        _results.BringToFront();
+        if (_items.Count == 0) ShowStatus("No results found.");
+        else
+        {
+            _status.Visible = false;
+            _results.Visible = true;
+            OpenPopup();
+        }
     }
 
     private void SelectRow(int index)
@@ -201,9 +241,11 @@ public class LabzSearchLookup : UserControl
         _selectedItem = _items[index];
         _timer.Stop();
         CancelPending();
-        _query.Text = _selectedItem.DisplayText;
+        _settingSelection = true;
+        try { _query.Text = _selectedItem.DisplayText; }
+        finally { _settingSelection = false; }
         _timer.Stop();
-        _results.Visible = false;
+        _popup.Close();
         SelectionChanged?.Invoke(this, EventArgs.Empty);
     }
 
@@ -212,13 +254,29 @@ public class LabzSearchLookup : UserControl
         if (_query is null || _search is null || _results is null) return;
         _query.Bounds = new Rectangle(0, 0, Math.Max(1, Width - 40), 32);
         _search.Bounds = new Rectangle(Math.Max(0, Width - 38), 0, 38, 32);
-        _results.Bounds = new Rectangle(0, 38, Math.Max(1, Width), Math.Max(1, Height - 38));
+        _popupPanel.Width = Math.Max(Width, 260);
+        _popup.Items[0].Size = _popupPanel.Size;
     }
 
     protected override void OnSizeChanged(EventArgs e)
     {
         base.OnSizeChanged(e);
         LayoutChildren();
+    }
+
+    private void ShowStatus(string message)
+    {
+        if (_disposed || IsDisposed) return;
+        _status.Text = message;
+        _status.Visible = true;
+        _results.Visible = false;
+        OpenPopup();
+    }
+
+    private void OpenPopup()
+    {
+        if (_disposed || !IsHandleCreated) return;
+        if (!_popup.Visible) _popup.Show(this, new Point(0, Height));
     }
 
     private void ApplyTheme()
@@ -230,6 +288,9 @@ public class LabzSearchLookup : UserControl
         _query.ForeColor = theme.Foreground;
         _search.BackColor = theme.Surface;
         _search.ForeColor = theme.Foreground;
+        _popupPanel.BackColor = theme.Surface;
+        _status.BackColor = theme.Surface;
+        _status.ForeColor = theme.Foreground;
         _results.BackgroundColor = theme.Surface;
         _results.DefaultCellStyle.BackColor = theme.Surface;
         _results.DefaultCellStyle.ForeColor = theme.Foreground;
@@ -251,6 +312,8 @@ public class LabzSearchLookup : UserControl
             _disposed = true;
             _timer.Stop();
             _timer.Dispose();
+            _popup.Close();
+            _popup.Dispose();
             CancelPending();
             UiThemeManager.ThemeChanged -= OnThemeChanged;
         }
