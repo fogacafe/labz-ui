@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Labz.UI.Core/Labz.UI.Core.csproj" />
+    <ProjectReference Include="../Labz.UI.Rendering/Labz.UI.Rendering.csproj" />
+    <ProjectReference Include="../Labz.UI.Validation/Labz.UI.Validation.csproj" />
+  </ItemGroup>
+</Project>
