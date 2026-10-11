@@ -1,4 +1,6 @@
 using System.ComponentModel;
+using System.Drawing.Drawing2D;
+using Labz.UI.Rendering.Drawing;
 using Labz.UI.Core.Theming;
 
 namespace Labz.UI.WinForms.Controls;
@@ -18,7 +20,7 @@ public class LabzSearchLookup : UserControl
         Visible = false, TabStop = true
     };
     private readonly Panel _popupPanel = new() { Size = new Size(360, 220) };
-    private readonly Panel _inputFrame = new() { Dock = DockStyle.Fill, Padding = new Padding(1) };
+    private bool _hovered;
     private readonly Label _status = new() { Dock = DockStyle.Top, Height = 30, TextAlign = ContentAlignment.MiddleLeft, Visible = false };
     private readonly ToolStripDropDown _popup = new() { AutoClose = true, Padding = Padding.Empty };
     private readonly System.Windows.Forms.Timer _timer = new();
@@ -34,7 +36,12 @@ public class LabzSearchLookup : UserControl
 
     public LabzSearchLookup()
     {
+        SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
         _query.AccessibleName = "Lookup search";
+        _query.Enter += (_, _) => Invalidate();
+        _query.Leave += (_, _) => Invalidate();
+        _query.MouseEnter += (_, _) => { _hovered = true; Invalidate(); };
+        _query.MouseLeave += (_, _) => { _hovered = false; Invalidate(); };
         _search.FlatAppearance.BorderSize = 0;
         _results.AccessibleName = "Lookup results";
         _timer.Interval = _debounceMilliseconds;
@@ -83,8 +90,7 @@ public class LabzSearchLookup : UserControl
             Margin = Padding.Empty,
             Padding = Padding.Empty
         });
-        Controls.Add(_inputFrame);
-        _inputFrame.Controls.AddRange([_query, _search]);
+        Controls.AddRange([_query, _search]);
         Size = new Size(360, 36);
         UiThemeManager.ThemeChanged += OnThemeChanged;
         ApplyTheme();
@@ -259,8 +265,8 @@ public class LabzSearchLookup : UserControl
     private void LayoutChildren()
     {
         if (_query is null || _search is null || _results is null) return;
-        _query.Bounds = new Rectangle(9, Math.Max(2, (Height - _query.PreferredHeight) / 2), Math.Max(1, Width - 53), _query.PreferredHeight);
-        _search.Bounds = new Rectangle(Math.Max(0, Width - 37), 1, 36, Math.Max(1, Height - 2));
+        _query.Bounds = new Rectangle(12, Math.Max(2, (Height - _query.PreferredHeight) / 2), Math.Max(1, Width - 60), _query.PreferredHeight);
+        _search.Bounds = new Rectangle(Math.Max(0, Width - 40), 4, 32, Math.Max(1, Height - 8));
         _popupPanel.Width = Math.Max(Width, 260);
         _popup.Items[0].Size = _popupPanel.Size;
     }
@@ -296,12 +302,24 @@ public class LabzSearchLookup : UserControl
         if (!_popup.Visible) _popup.Show(new Point(x, Math.Max(screen.Top, y)));
     }
 
+    protected override void OnPaint(PaintEventArgs e)
+    {
+        base.OnPaint(e);
+        var theme = UiThemeManager.Current;
+        e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+        e.Graphics.Clear(Parent?.BackColor ?? theme.Background);
+        using var path = RoundedRectangles.Create(new Rectangle(1, 1, Math.Max(1, Width - 3), Math.Max(1, Height - 3)), theme.CornerRadius);
+        using var fill = new SolidBrush(theme.Surface);
+        using var border = new Pen(_query.Focused ? theme.Primary : _hovered ? ControlPaint.Dark(theme.Border) : theme.Border, _query.Focused ? 2 : 1);
+        e.Graphics.FillPath(fill, path);
+        e.Graphics.DrawPath(border, path);
+    }
+
     private void ApplyTheme()
     {
         if (_query is null || _search is null || _results is null) return;
         var theme = UiThemeManager.Current;
-        BackColor = theme.Border;
-        _inputFrame.BackColor = theme.Surface;
+        BackColor = theme.Surface;
         _search.FlatAppearance.BorderColor = theme.Border;
         _query.BackColor = theme.Surface;
         _query.ForeColor = theme.Foreground;
