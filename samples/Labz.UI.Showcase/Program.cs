@@ -1,6 +1,7 @@
 using Labz.UI.Core.Theming;
 using Labz.UI.WinForms.Controls;
 using Labz.UI.WinForms.Layout;
+using Labz.UI.WinForms.Dialogs;
 using Labz.UI.Validation;
 
 namespace Labz.UI.Showcase;
@@ -55,6 +56,7 @@ public sealed class ShowcaseForm : Form
         _page.Controls.Add(gallery);
 
         AddCard(gallery, "Buttons", CreateButtons());
+        AddCard(gallery, "Dialogs", CreateDialogs());
         AddCard(gallery, "Text & validation", CreateTextInputs());
         AddCard(gallery, "Selection", CreateSelection());
         AddCard(gallery, "Search & lookup", CreateLookup());
@@ -108,6 +110,19 @@ public sealed class ShowcaseForm : Form
         };
         iconButton.Click += (_, _) => _status.Text = "Image button clicked";
         panel.Controls.AddRange([iconButton, sizes, variants]);
+        return panel;
+    }
+
+    private Control CreateDialogs()
+    {
+        var panel = Stack();
+        var success = new LabzButton { Text = "Success message", Width = 180 };
+        success.Click += (_, _) => LabzMessageBox.Show("Your changes have been saved.", "Saved", LabzDialogKind.Success, owner: this);
+        var warning = new LabzButton { Text = "Warning message", Width = 180, Variant = LabzButtonVariant.Outline };
+        warning.Click += (_, _) => LabzMessageBox.Show("Check your data before continuing.", "Warning", LabzDialogKind.Warning, owner: this);
+        var confirm = new LabzButton { Text = "Confirm deletion", Width = 180, Variant = LabzButtonVariant.Ghost };
+        confirm.Click += (_, _) => _status.Text = "Confirmation: " + LabzMessageBox.Confirm("Delete this item?", "Confirm", this);
+        panel.Controls.AddRange([confirm, warning, success]);
         return panel;
     }
 
