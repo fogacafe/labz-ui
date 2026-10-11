@@ -69,7 +69,29 @@ public class LabzProgressBar : ProgressBar
         }
     }
 
-    protected override void OnValueChanged(EventArgs e) { base.OnValueChanged(e); Invalidate(); }
+    [Browsable(true)]
+    [DefaultValue(0)]
+    public new int Value
+    {
+        get => base.Value;
+        set { base.Value = value; Invalidate(); }
+    }
+
+    [Browsable(true)]
+    [DefaultValue(100)]
+    public new int Maximum
+    {
+        get => base.Maximum;
+        set { base.Maximum = value; Invalidate(); }
+    }
+
+    [Browsable(true)]
+    [DefaultValue(0)]
+    public new int Minimum
+    {
+        get => base.Minimum;
+        set { base.Minimum = value; Invalidate(); }
+    }
     protected override void OnEnabledChanged(EventArgs e) { base.OnEnabledChanged(e); Invalidate(); }
 
     private void OnThemeChanged(object? sender, EventArgs e)
