@@ -306,16 +306,37 @@ public class LabzSearchLookup : UserControl
         _status.BackColor = theme.Surface;
         _status.ForeColor = theme.Foreground;
         _results.BackgroundColor = theme.Surface;
+        _results.BorderStyle = BorderStyle.None;
+        _results.CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal;
+        _results.EnableHeadersVisualStyles = false;
+        _results.RowTemplate.Height = 28;
+        _results.GridColor = theme.Border;
+        _results.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
+        _results.ColumnHeadersHeight = 30;
         _results.DefaultCellStyle.BackColor = theme.Surface;
         _results.DefaultCellStyle.ForeColor = theme.Foreground;
+        _results.DefaultCellStyle.SelectionBackColor = theme.Primary;
+        _results.DefaultCellStyle.SelectionForeColor = Color.White;
+        _results.RowsDefaultCellStyle.SelectionBackColor = theme.Primary;
+        _results.RowsDefaultCellStyle.SelectionForeColor = Color.White;
+        _results.AlternatingRowsDefaultCellStyle.BackColor = theme.Background;
+        _results.AlternatingRowsDefaultCellStyle.ForeColor = theme.Foreground;
+        _results.AlternatingRowsDefaultCellStyle.SelectionBackColor = theme.Primary;
+        _results.AlternatingRowsDefaultCellStyle.SelectionForeColor = Color.White;
         _results.ColumnHeadersDefaultCellStyle.BackColor = theme.Surface;
         _results.ColumnHeadersDefaultCellStyle.ForeColor = theme.Foreground;
+        _results.Invalidate();
     }
 
     private void OnThemeChanged(object? sender, EventArgs e)
     {
-        if (IsDisposed || !IsHandleCreated) return;
-        if (InvokeRequired) BeginInvoke((Action)ApplyTheme);
+        if (_disposed || IsDisposed || Disposing) return;
+        if (InvokeRequired)
+        {
+            if (!IsHandleCreated) return;
+            try { BeginInvoke((Action)ApplyTheme); }
+            catch (InvalidOperationException) { /* Handle is closing. */ }
+        }
         else ApplyTheme();
     }
 
