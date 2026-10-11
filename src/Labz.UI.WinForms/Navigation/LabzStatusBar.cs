@@ -18,7 +18,8 @@ public class LabzStatusBar : UserControl
         FlowDirection = FlowDirection.RightToLeft, Padding = new Padding(0, 2, 10, 0)
     };
     private readonly Label _statusLabel = new() { AutoSize = true, Padding = new Padding(0, 4, 0, 0) };
-    private readonly Label _environmentLabel = new() { AutoSize = true, Padding = new Padding(8, 4, 8, 0) };
+    private readonly Label _environmentLabel = new() { AutoSize = true, Padding = new Padding(8, 4, 8, 0), Margin = new Padding(2, 0, 4, 0) };
+    private readonly Panel _divider = new() { Dock = DockStyle.Top, Height = 1 };
     private readonly Button _userButton = CreateContextButton();
     private readonly Button _tenantButton = CreateContextButton();
     private LabzUserContext? _userContext;
@@ -30,10 +31,11 @@ public class LabzStatusBar : UserControl
 
     public LabzStatusBar()
     {
-        Height = 30;
-        MinimumSize = new Size(0, 30);
+        Height = 32;
+        MinimumSize = new Size(0, 32);
         Controls.Add(_left);
         Controls.Add(_right);
+        Controls.Add(_divider);
         _left.Controls.Add(_statusLabel);
         _right.Controls.Add(_userButton);
         _right.Controls.Add(_tenantButton);
@@ -127,12 +129,23 @@ public class LabzStatusBar : UserControl
         _statusLabel.Text = StatusText;
         _environmentLabel.Text = string.IsNullOrWhiteSpace(EnvironmentName) ? "" : EnvironmentName;
         _environmentLabel.Visible = !string.IsNullOrWhiteSpace(EnvironmentName);
-        _userButton.Text = string.IsNullOrWhiteSpace(UserName) ? "" : "👤 " + UserName;
+        _environmentLabel.Font = new Font(Font, FontStyle.Bold);
+        _environmentLabel.BackColor = GetEnvironmentColor(EnvironmentName);
+        _userButton.Text = string.IsNullOrWhiteSpace(UserName) ? "" : "●  " + UserName;
         _userButton.Visible = !string.IsNullOrWhiteSpace(UserName);
-        _tenantButton.Text = string.IsNullOrWhiteSpace(TenantName) ? "" : "▦ " + TenantName;
+        _tenantButton.Text = string.IsNullOrWhiteSpace(TenantName) ? "" : "◫  " + TenantName;
         _tenantButton.Visible = !string.IsNullOrWhiteSpace(TenantName);
         ApplyTheme();
     }
+
+    /// <summary>Semantic environment accent; neutral for unknown environments.</summary>
+    public static Color GetEnvironmentColor(string? environment) => environment?.Trim().ToUpperInvariant() switch
+    {
+        "PROD" or "PRODUCTION" or "PRODUÇÃO" => Color.FromArgb(170, 64, 64),
+        "UAT" or "STAGING" or "HML" or "HOMOLOG" => Color.FromArgb(176, 125, 39),
+        "DEV" or "DEVELOPMENT" => Color.FromArgb(58, 113, 161),
+        _ => Color.FromArgb(100, 104, 110)
+    };
 
     private void ApplyTheme()
     {
@@ -141,8 +154,10 @@ public class LabzStatusBar : UserControl
         BackColor = theme.Surface;
         _left.BackColor = theme.Surface;
         _right.BackColor = theme.Surface;
+        _divider.BackColor = ControlPaint.Dark(theme.Surface, 0.08f);
         _statusLabel.ForeColor = theme.Foreground;
-        _environmentLabel.ForeColor = theme.Foreground;
+        _environmentLabel.ForeColor = Color.White;
+        _environmentLabel.BackColor = GetEnvironmentColor(EnvironmentName);
         foreach (var button in new[] { _userButton, _tenantButton })
         {
             button.BackColor = theme.Surface;
