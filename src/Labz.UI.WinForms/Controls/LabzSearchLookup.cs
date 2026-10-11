@@ -13,6 +13,8 @@ public class LabzSearchLookup : UserControl
     // Handle it before the grid's default key processing.
     private sealed class LookupResultsGrid : DataGridView
     {
+        [Browsable(false)]
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public Action? EscapeRequested { get; set; }
 
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
