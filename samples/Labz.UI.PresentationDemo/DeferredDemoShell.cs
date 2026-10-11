@@ -123,15 +123,25 @@ internal sealed class DeferredDemoShell : Form
 
     private async void OnClosing(object? sender, FormClosingEventArgs e)
     {
-        if (_shuttingDown) return;
         e.Cancel = true;
+        if (_shuttingDown) return;
         _shuttingDown = true;
         Enabled = false;
-        try { await _host.DisposeAsync(); }
-        finally
+        try
         {
+            if (!await _host.TryCloseAllAsync()) return;
             FormClosing -= OnClosing;
             Close();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"Could not close workspace: {ex.Message}",
+                "Close failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+        finally
+        {
+            _shuttingDown = false;
+            if (!IsDisposed) Enabled = true;
         }
     }
 }

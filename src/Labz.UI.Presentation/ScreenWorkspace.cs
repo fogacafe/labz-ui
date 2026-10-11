@@ -14,6 +14,7 @@ public sealed class ScreenWorkspace : IAsyncDisposable
     private readonly HashSet<Task> _closing = new();
     private readonly HashSet<object> _closePending = new();
     private bool _disposed;
+    private bool _shutdownPending;
 
     /// <summary>Optional per-screen close approval. Return false to keep the tab open.</summary>
     public Func<object, CancellationToken, ValueTask<bool>>? CanCloseAsync { get; set; }
@@ -33,6 +34,7 @@ public sealed class ScreenWorkspace : IAsyncDisposable
         where TPresenter : class, IAsyncScreenPresenter<TView>
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
+        if (_shutdownPending) throw new InvalidOperationException("Workspace shutdown approval is in progress.");
         var screen = _navigator.Open<TView, TPresenter>(policy, key, cancellationToken);
         if (_screens.TryGetValue(screen, out var existing))
         {
@@ -89,7 +91,7 @@ public sealed class ScreenWorkspace : IAsyncDisposable
     public async Task<bool> CloseAsync(object screen, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(screen);
-        if (!_screens.ContainsKey(screen) || !_closePending.Add(screen)) return false;
+        if (_shutdownPending || !_screens.ContainsKey(screen) || !_closePending.Add(screen)) return false;
         try
         {
             if (CanCloseAsync is { } guard && !await guard(screen, cancellationToken)) return false;
@@ -109,6 +111,31 @@ public sealed class ScreenWorkspace : IAsyncDisposable
     {
         try { await entry.Close(); }
         finally { entry.Page.Dispose(); }
+    }
+
+    /// <summary>
+    /// Checks every currently open screen before disposing any of them.
+    /// If approval is denied, all tabs remain open. Approval callbacks may still
+    /// have side effects (for example, saving data).
+    /// </summary>
+    public async Task<bool> TryCloseAllAsync(CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        if (_shutdownPending || _closePending.Count != 0) return false;
+        _shutdownPending = true;
+        try
+        {
+            foreach (var screen in _screens.Keys.ToArray())
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (CanCloseAsync is { } guard && !await guard(screen, cancellationToken))
+                    return false;
+            }
+            cancellationToken.ThrowIfCancellationRequested();
+            await DisposeAsync();
+            return true;
+        }
+        finally { _shutdownPending = false; }
     }
 
     public async ValueTask DisposeAsync()
