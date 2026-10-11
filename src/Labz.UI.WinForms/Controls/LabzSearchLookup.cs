@@ -31,7 +31,7 @@ public class LabzSearchLookup : UserControl
     private LabzLookupItem? _selectedItem;
     private int _maxResults = 10;
     private bool _settingSelection;
-    private bool _popupOpenedForTyping;
+
     private int _debounceMilliseconds = 350;
 
     public LabzSearchLookup()
@@ -59,7 +59,6 @@ public class LabzSearchLookup : UserControl
             if (e.KeyCode == Keys.Enter) { e.SuppressKeyPress = true; _ = SearchOnEventAsync(); }
             if (e.KeyCode == Keys.Down && _popup.Visible && _results.Rows.Count > 0)
             {
-                _popupOpenedForTyping = false;
                 _results.Focus();
                 var first = _results.Rows.Cast<DataGridViewRow>().FirstOrDefault(r => r.Visible);
                 if (first is not null && _results.Columns.Count > 0)
@@ -79,7 +78,7 @@ public class LabzSearchLookup : UserControl
                 e.SuppressKeyPress = true;
                 SelectRow(_results.CurrentCell?.RowIndex ?? -1);
             }
-            if (e.KeyCode == Keys.Escape) { _popup.Close(); _query.Focus(); }
+            if (e.KeyCode == Keys.Escape) { _popup.Close(); _query.Focus(); e.Handled = true; e.SuppressKeyPress = true; }
         };
         _results.Dock = DockStyle.Fill;
         _results.RowHeadersVisible = false;
@@ -87,6 +86,7 @@ public class LabzSearchLookup : UserControl
         _results.Visible = true;
         _popupPanel.Controls.Add(_results);
         _popupPanel.Controls.Add(_status);
+        _popup.Closed += (_, _) => Invalidate();
         _popup.Items.Add(new ToolStripControlHost(_popupPanel)
         {
             AutoSize = false,
@@ -310,7 +310,6 @@ public class LabzSearchLookup : UserControl
         {
             var keepTyping = _query.Focused;
             _popup.AutoClose = !keepTyping;
-            _popupOpenedForTyping = keepTyping;
             _popup.Show(new Point(x, Math.Max(screen.Top, y)));
             if (keepTyping) _query.Focus();
         }
@@ -339,7 +338,10 @@ public class LabzSearchLookup : UserControl
     {
         base.OnMouseClick(e);
         if (Enabled && e.Button == MouseButtons.Left && e.X >= Width - 48)
+        {
+            _query.Focus();
             _ = SearchOnEventAsync();
+        }
         else if (Enabled && e.Button == MouseButtons.Left)
             _query.Focus();
     }
