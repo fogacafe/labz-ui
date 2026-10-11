@@ -29,6 +29,7 @@ public class LabzAppShell : UserControl
     private bool _sidebarExpanded = true;
     private LabzTabWorkspace? _workspace;
     private Func<string, string, Control>? _pageFactory;
+    private bool _commandPaletteEnabled = true;
 
     public LabzAppShell()
     {
@@ -80,6 +81,32 @@ public class LabzAppShell : UserControl
         workspace.Dock = DockStyle.Fill;
         _content.Controls.Clear();
         _content.Controls.Add(workspace);
+    }
+
+    [Category("Behavior")]
+    [DefaultValue(true)]
+    public bool CommandPaletteEnabled
+    {
+        get => _commandPaletteEnabled;
+        set => _commandPaletteEnabled = value;
+    }
+
+    /// <summary>Opens a global search over all registered modules and pages.</summary>
+    public void ShowCommandPalette()
+    {
+        if (!CommandPaletteEnabled || _modules.Count == 0) return;
+        using var palette = new LabzCommandPalette(_modules, (moduleId, pageId) => NavigateTo(moduleId, pageId));
+        palette.ShowDialog(FindForm());
+    }
+
+    protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+    {
+        if (CommandPaletteEnabled && keyData == (Keys.Control | Keys.K))
+        {
+            ShowCommandPalette();
+            return true;
+        }
+        return base.ProcessCmdKey(ref msg, keyData);
     }
 
     public event EventHandler<LabzNavigationEventArgs>? PageRequested;
