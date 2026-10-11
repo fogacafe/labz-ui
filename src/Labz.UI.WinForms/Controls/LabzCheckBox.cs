@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Drawing.Drawing2D;
+using Labz.UI.Rendering.Drawing;
 using Labz.UI.Core.Theming;
 
 namespace Labz.UI.WinForms.Controls;
@@ -24,8 +25,7 @@ public class LabzCheckBox : CheckBox
         var side = 16;
         var y = Math.Max(0, (Height - side) / 2);
         var box = new Rectangle(1, y, side, side);
-        using var path = new GraphicsPath();
-        path.AddRoundedRectangle(box, new Size(4, 4));
+        using var path = RoundedRectangles.Create(box, 4);
         using var fill = new SolidBrush(Checked && CheckState != CheckState.Unchecked ? theme.Primary : theme.Surface);
         using var border = new Pen(Enabled ? theme.Border : SystemColors.ControlDark);
         e.Graphics.FillPath(fill, path);
