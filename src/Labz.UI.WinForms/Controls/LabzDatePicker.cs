@@ -41,8 +41,13 @@ public class LabzDatePicker : DateTimePicker
 
     private void OnThemeChanged(object? sender, EventArgs e)
     {
-        if (IsDisposed || !IsHandleCreated) return;
-        if (InvokeRequired) BeginInvoke((Action)ApplyTheme);
+        if (IsDisposed || Disposing) return;
+        if (InvokeRequired)
+        {
+            if (!IsHandleCreated) return;
+            try { BeginInvoke((Action)ApplyTheme); }
+            catch (InvalidOperationException) { /* Closing handle. */ }
+        }
         else ApplyTheme();
     }
 

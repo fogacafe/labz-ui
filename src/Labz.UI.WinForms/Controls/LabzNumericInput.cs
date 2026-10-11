@@ -12,6 +12,7 @@ public class LabzNumericInput : NumericUpDown
     private LabzNumericFormat _numericFormat;
     private CultureInfo _culture = CultureInfo.CurrentCulture;
     private bool _updatingText;
+    private bool _allowEmptyInput;
 
     public LabzNumericInput()
     {
@@ -55,6 +56,15 @@ public class LabzNumericInput : NumericUpDown
         set => Culture = string.IsNullOrWhiteSpace(value) ? CultureInfo.CurrentCulture : CultureInfo.GetCultureInfo(value);
     }
 
+    /// <summary>When enabled, blank text is left untouched until the user enters a value; Value remains the last committed decimal.</summary>
+    [Category("Behavior")]
+    [DefaultValue(false)]
+    public bool AllowEmptyInput
+    {
+        get => _allowEmptyInput;
+        set => _allowEmptyInput = value;
+    }
+
     /// <summary>For percent format, 25 means 25%, not 0.25.</summary>
     protected override void UpdateEditText()
     {
@@ -79,6 +89,7 @@ public class LabzNumericInput : NumericUpDown
     {
         if (_updatingText) return;
         var text = Text.Trim();
+        if (AllowEmptyInput && text.Length == 0) return;
         if (NumericFormat == LabzNumericFormat.Percent)
             text = text.Replace("%", "", StringComparison.Ordinal).Trim();
         if (NumericFormat == LabzNumericFormat.Currency)
@@ -100,8 +111,13 @@ public class LabzNumericInput : NumericUpDown
 
     private void OnThemeChanged(object? sender, EventArgs e)
     {
-        if (IsDisposed || !IsHandleCreated) return;
-        if (InvokeRequired) BeginInvoke((Action)ApplyTheme);
+        if (IsDisposed || Disposing) return;
+        if (InvokeRequired)
+        {
+            if (!IsHandleCreated) return;
+            try { BeginInvoke((Action)ApplyTheme); }
+            catch (InvalidOperationException) { /* Closing handle. */ }
+        }
         else ApplyTheme();
     }
 
