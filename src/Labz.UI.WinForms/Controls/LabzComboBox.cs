@@ -353,7 +353,6 @@ public class LabzComboBox : UserControl
         DetachPopupOwner();
         _popupOwner = owner;
         if (owner is null) return;
-        owner.Deactivate += OnOwnerDeactivated;
         owner.Resize += OnOwnerResized;
         owner.VisibleChanged += OnOwnerVisibilityChanged;
         owner.FormClosed += OnOwnerClosed;
@@ -362,14 +361,12 @@ public class LabzComboBox : UserControl
     private void DetachPopupOwner()
     {
         if (_popupOwner is null) return;
-        _popupOwner.Deactivate -= OnOwnerDeactivated;
         _popupOwner.Resize -= OnOwnerResized;
         _popupOwner.VisibleChanged -= OnOwnerVisibilityChanged;
         _popupOwner.FormClosed -= OnOwnerClosed;
         _popupOwner = null;
     }
 
-    private void OnOwnerDeactivated(object? sender, EventArgs e) => _popup.Close();
     private void OnOwnerResized(object? sender, EventArgs e)
     {
         if (_popupOwner?.WindowState == FormWindowState.Minimized) _popup.Close();
