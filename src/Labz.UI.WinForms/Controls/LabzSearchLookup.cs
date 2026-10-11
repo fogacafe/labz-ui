@@ -387,7 +387,7 @@ public class LabzSearchLookup : UserControl
         _results.AlternatingRowsDefaultCellStyle.SelectionForeColor = Color.White;
         _results.ColumnHeadersDefaultCellStyle.BackColor = theme.Background;
         _results.ColumnHeadersDefaultCellStyle.ForeColor = theme.Foreground;
-        _results.ColumnHeadersDefaultCellStyle.Font = new Font(Font, FontStyle.Bold);
+        _results.ColumnHeadersDefaultCellStyle.Font = Font;
         _results.ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.None;
         _results.DefaultCellStyle.Padding = new Padding(8, 0, 4, 0);
         _results.AlternatingRowsDefaultCellStyle.SelectionBackColor = theme.Primary;
