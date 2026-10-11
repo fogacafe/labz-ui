@@ -1,4 +1,5 @@
 using Labz.UI.Presentation;
+using Labz.UI.Core.Theming;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Labz.UI.PresentationDemo;
@@ -69,6 +70,7 @@ internal sealed class TradeDetailsControl : UserControl
 
 internal sealed class TradeForm : Form
 {
+    private readonly ScreenThemeBinding _themeBinding;
     public Label InstanceLabel { get; } = new() { Dock = DockStyle.Top, Height = 40 };
     public TextBox Notes { get; } = new() { Dock = DockStyle.Top, PlaceholderText = "Independent notes for this tab" };
 
@@ -84,8 +86,15 @@ internal sealed class TradeForm : Form
         Controls.Add(indicator);
         var overlay = new ScreenLoadingOverlay();
         overlay.Bind(loading);
+        _themeBinding = new ScreenThemeBinding(overlay, indicator);
         Controls.Add(overlay);
         overlay.BringToFront();
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing) _themeBinding?.Dispose();
+        base.Dispose(disposing);
     }
 }
 
