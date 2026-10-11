@@ -83,6 +83,32 @@ public sealed class DeferredScreenInstance<TView> : IAsyncDisposable where TView
 /// </summary>
 public sealed class DeferredScreenFactory(IServiceScopeFactory scopes)
 {
+    /// <summary>Creates a screen and delivers typed parameters before initialization starts.</summary>
+    public DeferredScreenInstance<TView> Open<TView, TPresenter, TParameters>(
+        TParameters parameters,
+        CancellationToken cancellationToken = default)
+        where TView : Form
+        where TPresenter : class, IAsyncScreenPresenter<TView>, IScreenParameters<TParameters>
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var scope = scopes.CreateAsyncScope();
+        try
+        {
+            var view = scope.ServiceProvider.GetRequiredService<TView>();
+            var presenter = scope.ServiceProvider.GetRequiredService<TPresenter>();
+            presenter.Attach(view);
+            presenter.SetParameters(parameters);
+            var instance = new DeferredScreenInstance<TView>(scope, view, presenter);
+            instance.Start(cancellationToken);
+            return instance;
+        }
+        catch
+        {
+            scope.Dispose();
+            throw;
+        }
+    }
+
     public DeferredScreenInstance<TView> Open<TView, TPresenter>(
         CancellationToken cancellationToken = default)
         where TView : Form
