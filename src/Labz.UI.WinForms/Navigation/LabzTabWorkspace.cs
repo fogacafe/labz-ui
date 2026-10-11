@@ -35,6 +35,9 @@ public class LabzTabWorkspace : UserControl
     public event EventHandler<LabzWorkspacePageEventArgs>? ActivePageChanged;
     public event EventHandler<LabzWorkspacePageEventArgs>? PageClosed;
 
+    /// <summary>Raised before closing a page. Set Cancel to true to retain the tab and content.</summary>
+    public event EventHandler<LabzWorkspacePageClosingEventArgs>? PageClosing;
+
     /// <summary>Opens a page once per key; existing pages are activated without invoking the factory.</summary>
     public bool Open(string id, string title, Func<Control> createContent)
     {
@@ -96,6 +99,11 @@ public class LabzTabWorkspace : UserControl
     public bool Close(string id)
     {
         if (!_pages.TryGetValue(id, out var page)) return false;
+        var closing = new LabzWorkspacePageClosingEventArgs(page.Id, page.Title);
+        PageClosing?.Invoke(this, closing);
+        if (closing.Cancel) return false;
+        // A closing handler may have already removed this page.
+        if (!_pages.TryGetValue(id, out page)) return false;
         var wasActive = _activePageId == page.Id;
         _pages.Remove(id);
         _host.Controls.Remove(page.Content);
@@ -152,6 +160,13 @@ public class LabzTabWorkspace : UserControl
 }
 
 public sealed class LabzWorkspacePageEventArgs(string pageId, string title) : EventArgs
+{
+    public string PageId { get; } = pageId;
+    public string Title { get; } = title;
+}
+
+/// <summary>Cancelable page close request, suitable for dirty-document checks.</summary>
+public sealed class LabzWorkspacePageClosingEventArgs(string pageId, string title) : CancelEventArgs
 {
     public string PageId { get; } = pageId;
     public string Title { get; } = title;
