@@ -14,33 +14,44 @@ public class LabzTabs : TabControl
         SizeMode = TabSizeMode.Normal;
         ItemSize = new Size(120, 38);
         Padding = new Point(18, 7);
-        SetStyle(ControlStyles.OptimizedDoubleBuffer, true);
+        SetStyle(ControlStyles.OptimizedDoubleBuffer | ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint, true);
         UiThemeManager.ThemeChanged += OnThemeChanged;
         ApplyTheme();
     }
 
+    protected override void OnPaint(PaintEventArgs e)
+    {
+        e.Graphics.Clear(UiThemeManager.Current.Background);
+        for (var i = 0; i < TabCount; i++)
+            PaintTab(e.Graphics, i, i == SelectedIndex);
+    }
+
     protected override void OnDrawItem(DrawItemEventArgs e)
     {
-        if (e.Index < 0 || e.Index >= TabPages.Count) return;
+        PaintTab(e.Graphics, e.Index, e.Index == SelectedIndex);
+    }
+
+    private void PaintTab(Graphics graphics, int index, bool selected)
+    {
+        if (index < 0 || index >= TabPages.Count) return;
         var theme = UiThemeManager.Current;
-        var rect = GetTabRect(e.Index);
-        var selected = e.Index == SelectedIndex;
+        var rect = GetTabRect(index);
         using var background = new SolidBrush(selected ? theme.Surface : theme.Background);
-        e.Graphics.FillRectangle(background, rect);
-        var page = TabPages[e.Index];
+        graphics.FillRectangle(background, rect);
+        var page = TabPages[index];
         var foreground = page.Enabled ? (selected ? theme.Primary : theme.Foreground) : SystemColors.GrayText;
-        TextRenderer.DrawText(e.Graphics, page.Text, Font, rect, foreground,
+        TextRenderer.DrawText(graphics, page.Text, Font, rect, foreground,
             TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter |
             TextFormatFlags.EndEllipsis | TextFormatFlags.SingleLine);
         if (selected)
         {
             using var underline = new SolidBrush(theme.Primary);
-            e.Graphics.FillRectangle(underline, rect.Left + 6, rect.Bottom - 3, Math.Max(1, rect.Width - 12), 3);
+            graphics.FillRectangle(underline, rect.Left + 6, rect.Bottom - 3, Math.Max(1, rect.Width - 12), 3);
         }
-        if ((e.State & DrawItemState.Focus) != 0 && Focused)
+        if (selected && Focused)
         {
             var focus = Rectangle.Inflate(rect, -5, -5);
-            ControlPaint.DrawFocusRectangle(e.Graphics, focus, foreground, theme.Surface);
+            ControlPaint.DrawFocusRectangle(graphics, focus, foreground, theme.Surface);
         }
     }
 

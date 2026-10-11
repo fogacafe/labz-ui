@@ -173,9 +173,9 @@ public sealed class ShowcaseForm : Form
             new LabzBadge { Text = "Error", Variant = LabzBadgeVariant.Error }
         ]);
         var spinner = new LabzSpinner { Width = 36, Height = 36 };
-        var card = new LabzCard { Title = "Summary", Width = 340, Height = 90 };
-        card.Controls.Add(new LabzLabel { Text = "Reusable themed content surface", Location = new Point(18, 48) });
-        var empty = new LabzEmptyState { Heading = "No results", Description = "Try changing the search criteria.", Width = 340, Height = 115 };
+        var card = new LabzCard { Title = "Summary", Width = 340, Height = 112 };
+        card.Controls.Add(new LabzLabel { Text = "Reusable themed content surface", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft });
+        var empty = new LabzEmptyState { Heading = "No results", Description = "Try changing the search criteria.", Width = 340, Height = 130 };
         panel.Controls.AddRange([empty, card, spinner, badges]);
         return panel;
     }

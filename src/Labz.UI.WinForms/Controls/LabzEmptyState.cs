@@ -6,13 +6,13 @@ namespace Labz.UI.WinForms.Controls;
 /// <summary>Accessible placeholder for an empty search or content view.</summary>
 public class LabzEmptyState : UserControl
 {
-    private readonly LabzLabel _heading = new() { Variant = LabzLabelVariant.Heading, AutoSize = false, Dock = DockStyle.Top, Height = 42, TextAlign = ContentAlignment.MiddleCenter };
-    private readonly LabzLabel _description = new() { Variant = LabzLabelVariant.Muted, AutoSize = false, Dock = DockStyle.Top, Height = 58, TextAlign = ContentAlignment.TopCenter };
+    private readonly LabzLabel _heading = new() { Variant = LabzLabelVariant.Heading, AutoSize = false, Dock = DockStyle.Top, Height = 32, TextAlign = ContentAlignment.MiddleCenter };
+    private readonly LabzLabel _description = new() { Variant = LabzLabelVariant.Muted, AutoSize = false, Dock = DockStyle.Top, Height = 38, TextAlign = ContentAlignment.MiddleCenter };
 
     public LabzEmptyState()
     {
         Size = new Size(320, 140);
-        Padding = new Padding(12, 20, 12, 12);
+        Padding = new Padding(12, 8, 12, 8);
         Controls.Add(_description);
         Controls.Add(_heading);
         UiThemeManager.ThemeChanged += OnThemeChanged;
