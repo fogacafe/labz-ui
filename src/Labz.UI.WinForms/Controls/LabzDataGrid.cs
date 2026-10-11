@@ -203,6 +203,8 @@ public class LabzDataGrid : DataGridView
         SelectionMode = DataGridViewSelectionMode.FullRowSelect;
         MultiSelect = false;
         AllowUserToOrderColumns = true;
+        ReadOnly = true;
+        ShowCellToolTips = true;
         AllowUserToAddRows = false;
         AllowUserToDeleteRows = false;
         ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
