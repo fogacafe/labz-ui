@@ -14,6 +14,7 @@ public class LabzComboBox : UserControl
     private readonly ComboBox _combo;
     private readonly Button _searchButton;
     private bool _showSearchButton;
+    private readonly Panel _frame = new() { Dock = DockStyle.Fill, Padding = new Padding(1) };
 
     public LabzComboBox()
     {
@@ -39,8 +40,11 @@ public class LabzComboBox : UserControl
         };
         _searchButton.FlatAppearance.BorderSize = 0;
         _searchButton.Click += (_, _) => SearchRequested?.Invoke(this, EventArgs.Empty);
-        Controls.Add(_combo);
-        Controls.Add(_searchButton);
+        _combo.FlatStyle = FlatStyle.Flat;
+        _combo.Dock = DockStyle.None;
+        Controls.Add(_frame);
+        _frame.Controls.Add(_combo);
+        _frame.Controls.Add(_searchButton);
         Size = new Size(240, 42);
         UiThemeManager.ThemeChanged += OnThemeChanged;
         ApplyTheme();
@@ -180,8 +184,8 @@ public class LabzComboBox : UserControl
     {
         if (_combo is null || _searchButton is null) return;
         var actionWidth = _showSearchButton ? 36 : 0;
-        _combo.Bounds = new Rectangle(4, Math.Max(2, (Height - _combo.Height) / 2),
-            Math.Max(1, Width - actionWidth - 8), _combo.Height);
+        _combo.Bounds = new Rectangle(5, Math.Max(2, (Height - _combo.Height) / 2),
+            Math.Max(1, Width - actionWidth - 10), _combo.Height);
         _searchButton.Bounds = new Rectangle(Math.Max(0, Width - 36),
             Math.Max(2, (Height - 30) / 2), 32, 30);
     }
@@ -190,7 +194,8 @@ public class LabzComboBox : UserControl
     {
         if (_combo is null || _searchButton is null) return;
         var theme = UiThemeManager.Current;
-        BackColor = theme.Surface;
+        BackColor = theme.Border;
+        _frame.BackColor = theme.Surface;
         _combo.BackColor = theme.Surface;
         _combo.ForeColor = theme.Foreground;
         _combo.Invalidate();
