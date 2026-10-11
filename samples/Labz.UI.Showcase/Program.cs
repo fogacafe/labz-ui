@@ -103,6 +103,12 @@ public sealed class ShowcaseForm : Form
         var workspace = new LabzTabWorkspace();
         workspace.Open("bonds/trades", "Trades", () => new LabzTextBox { Text = "Unsaved trade draft", Dock = DockStyle.Top });
         workspace.Open("funds/positions", "Positions", () => new LabzLabel { Text = "Fund positions", Dock = DockStyle.Top });
+        workspace.PageClosing += (_, args) =>
+        {
+            if (args.PageId != "bonds/trades") return;
+            args.Cancel = MessageBox.Show("Close the trade draft?", "Unsaved changes",
+                MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes;
+        };
         return workspace;
     }
 
