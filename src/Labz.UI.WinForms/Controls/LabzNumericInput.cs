@@ -142,8 +142,16 @@ public class LabzNumericInput : UserControl
         set { if (_editor is not null) _editor.Text = value ?? string.Empty; }
     }
 
-    public void UpButton() => Value = Maximum - _value < Increment ? Maximum : _value + Increment;
-    public void DownButton() => Value = _value - Minimum < Increment ? Minimum : _value - Increment;
+    public void UpButton()
+    {
+        try { Value = checked(_value + Increment); }
+        catch (OverflowException) { Value = Maximum; }
+    }
+    public void DownButton()
+    {
+        try { Value = checked(_value - Increment); }
+        catch (OverflowException) { Value = Minimum; }
+    }
 
     private void CommitText()
     {
