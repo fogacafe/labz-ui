@@ -18,6 +18,7 @@ public class LabzSearchLookup : UserControl
         Visible = false, TabStop = true
     };
     private readonly Panel _popupPanel = new() { Size = new Size(360, 220) };
+    private readonly Panel _inputFrame = new() { Dock = DockStyle.Fill, Padding = new Padding(1) };
     private readonly Label _status = new() { Dock = DockStyle.Top, Height = 30, TextAlign = ContentAlignment.MiddleLeft, Visible = false };
     private readonly ToolStripDropDown _popup = new() { AutoClose = true, Padding = Padding.Empty };
     private readonly System.Windows.Forms.Timer _timer = new();
@@ -82,7 +83,8 @@ public class LabzSearchLookup : UserControl
             Margin = Padding.Empty,
             Padding = Padding.Empty
         });
-        Controls.AddRange([_query, _search]);
+        Controls.Add(_inputFrame);
+        _inputFrame.Controls.AddRange([_query, _search]);
         Size = new Size(360, 36);
         UiThemeManager.ThemeChanged += OnThemeChanged;
         ApplyTheme();
@@ -298,7 +300,8 @@ public class LabzSearchLookup : UserControl
     {
         if (_query is null || _search is null || _results is null) return;
         var theme = UiThemeManager.Current;
-        BackColor = theme.Surface;
+        BackColor = theme.Border;
+        _inputFrame.BackColor = theme.Surface;
         _search.FlatAppearance.BorderColor = theme.Border;
         _query.BackColor = theme.Surface;
         _query.ForeColor = theme.Foreground;
