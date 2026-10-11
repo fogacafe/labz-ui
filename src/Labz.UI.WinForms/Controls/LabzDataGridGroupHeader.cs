@@ -11,6 +11,7 @@ public sealed class LabzDataGridGroupHeader : UserControl
     private readonly Label _title;
     private readonly Label _summary;
     private bool _expanded = true;
+    private readonly Font _titleFont;
 
     public event EventHandler? ExpandToggleRequested;
 
@@ -54,12 +55,13 @@ public sealed class LabzDataGridGroupHeader : UserControl
             AccessibleName = "Toggle group"
         };
         _toggle.FlatAppearance.BorderSize = 0;
+        _titleFont = new Font(Font, FontStyle.Bold);
         _title = new Label
         {
             Dock = DockStyle.Fill,
             TextAlign = ContentAlignment.MiddleLeft,
             AutoEllipsis = true,
-            Font = new Font(Font, FontStyle.Bold)
+            Font = _titleFont
         };
         _summary = new Label
         {
@@ -104,7 +106,7 @@ public sealed class LabzDataGridGroupHeader : UserControl
         if (disposing)
         {
             UiThemeManager.ThemeChanged -= ThemeChanged;
-            _title.Font?.Dispose();
+            _titleFont.Dispose();
         }
         base.Dispose(disposing);
     }
