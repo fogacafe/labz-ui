@@ -160,6 +160,18 @@ public class LabzTabWorkspace : UserControl
         finally { _isResetting = false; }
     }
 
+    /// <summary>Closes all tabs after the host has already checked dirty state.</summary>
+    public void CloseAllAfterApproval()
+    {
+        if (_isResetting) return;
+        _isResetting = true;
+        try
+        {
+            foreach (var id in _pages.Keys.ToArray()) CloseCore(id, skipGuard: true);
+        }
+        finally { _isResetting = false; }
+    }
+
     public bool Close(string id) => CloseCore(id, skipGuard: false);
 
     private bool CloseCore(string id, bool skipGuard)
