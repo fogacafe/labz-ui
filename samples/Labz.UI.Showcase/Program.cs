@@ -61,6 +61,7 @@ public sealed class ShowcaseForm : Form
         AddCard(gallery, "Navigation", CreateNavigation());
         AddCard(gallery, "Advanced inputs", CreateAdvancedInputs());
         AddCard(gallery, "Visual components", CreateVisualComponents());
+        AddCard(gallery, "Data grid", CreateDataGrid());
         AddCard(gallery, "Dialogs", CreateDialogs());
         AddCard(gallery, "Toast notifications", CreateToasts());
         AddCard(gallery, "Text & validation", CreateTextInputs());
@@ -93,6 +94,19 @@ public sealed class ShowcaseForm : Form
         card.Controls.Add(content);
         gallery.Controls.Add(card, col, row);
     }
+
+    private static Control CreateDataGrid()
+    {
+        var grid = new LabzDataGrid { Dock = DockStyle.Fill, ReadOnlyGrid = true };
+        grid.DataSource = new System.ComponentModel.BindingList<GridSample>([
+            new GridSample(1001, "Draft", 1200.50m),
+            new GridSample(1002, "Released", 850.75m),
+            new GridSample(1003, "Pending", 2400m)
+        ]);
+        return grid;
+    }
+
+    private sealed record GridSample(int Ticket, string Status, decimal Amount);
 
     private static Control CreateVisualComponents()
     {
