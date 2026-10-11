@@ -11,6 +11,7 @@ public class LabzNumericInput : NumericUpDown
 {
     private LabzNumericFormat _numericFormat;
     private CultureInfo _culture = CultureInfo.CurrentCulture;
+    private bool _updatingText;
 
     public LabzNumericInput()
     {
@@ -64,12 +65,19 @@ public class LabzNumericInput : NumericUpDown
             LabzNumericFormat.Percent => "N" + DecimalPlaces,
             _ => ThousandsSeparator ? "N" + DecimalPlaces : "F" + DecimalPlaces
         };
-        var text = Value.ToString(format, _culture ?? CultureInfo.CurrentCulture);
-        Text = NumericFormat == LabzNumericFormat.Percent ? text + " %" : text;
+        if (_updatingText) return;
+        _updatingText = true;
+        try
+        {
+            var text = base.Value.ToString(format, _culture ?? CultureInfo.CurrentCulture);
+            Text = NumericFormat == LabzNumericFormat.Percent ? text + " %" : text;
+        }
+        finally { _updatingText = false; }
     }
 
     protected override void ValidateEditText()
     {
+        if (_updatingText) return;
         var text = Text.Trim();
         if (NumericFormat == LabzNumericFormat.Percent)
             text = text.Replace("%", "", StringComparison.Ordinal).Trim();
