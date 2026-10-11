@@ -13,6 +13,8 @@ internal static class Program
         services.AddLabzScreen<TradeForm, TradePresenter>();
         services.AddScoped<ScreenState>();
         services.AddScoped<IScreenEventBus, ScreenEventBus>();
+        services.AddTransient<TradeSelectorControl>();
+        services.AddTransient<TradeDetailsControl>();
         services.AddSingleton<ScreenFactory>();
         using var provider = services.BuildServiceProvider(validateScopes: true);
         Application.Run(new DemoShell(provider.GetRequiredService<ScreenFactory>()));
@@ -24,15 +26,51 @@ internal sealed class ScreenState
     public Guid InstanceId { get; } = Guid.NewGuid();
 }
 
+internal sealed record TradeSelected(int TradeId);
+
+internal sealed class TradeSelectorControl : UserControl
+{
+    public TradeSelectorControl(IScreenEventBus bus)
+    {
+        Dock = DockStyle.Top;
+        Height = 44;
+        var select = new Button { Text = "Select trade #1024", Dock = DockStyle.Fill };
+        select.Click += (_, _) => bus.Publish(new TradeSelected(1024));
+        Controls.Add(select);
+    }
+}
+
+internal sealed class TradeDetailsControl : UserControl
+{
+    private readonly IDisposable _subscription;
+    private readonly Label _details = new() { Dock = DockStyle.Fill, Text = "No trade selected" };
+
+    public TradeDetailsControl(IScreenEventBus bus)
+    {
+        Dock = DockStyle.Top;
+        Height = 40;
+        Controls.Add(_details);
+        _subscription = bus.Subscribe<TradeSelected>(e => _details.Text = $"Selected trade: {e.TradeId}");
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing) _subscription.Dispose();
+        base.Dispose(disposing);
+    }
+}
+
 internal sealed class TradeForm : Form
 {
     public Label InstanceLabel { get; } = new() { Dock = DockStyle.Top, Height = 40 };
     public TextBox Notes { get; } = new() { Dock = DockStyle.Top, PlaceholderText = "Independent notes for this tab" };
 
-    public TradeForm()
+    public TradeForm(TradeSelectorControl selector, TradeDetailsControl details)
     {
         Text = "Trade editor";
         Controls.Add(Notes);
+        Controls.Add(details);
+        Controls.Add(selector);
         Controls.Add(InstanceLabel);
     }
 }
