@@ -11,6 +11,47 @@ public class LabzDataGrid : DataGridView
     private bool _stripedRows = true;
     private Font? _headerFont;
     private bool _columnSelectorEnabled = true;
+    private readonly Dictionary<(int Row, int Column), CellValidation> _cellValidations = new();
+
+    /// <summary>Enables editing using native DataGridView editing semantics.</summary>
+    [Category("Behavior")]
+    [DefaultValue(false)]
+    public bool EditableGrid
+    {
+        get => !ReadOnly;
+        set => ReadOnly = !value;
+    }
+
+    /// <summary>Marks a cell with an error or warning and shows its message as a tooltip.</summary>
+    public void SetCellValidation(int rowIndex, int columnIndex, CellValidationSeverity severity, string message)
+    {
+        if (rowIndex < 0 || rowIndex >= RowCount) throw new ArgumentOutOfRangeException(nameof(rowIndex));
+        if (columnIndex < 0 || columnIndex >= ColumnCount) throw new ArgumentOutOfRangeException(nameof(columnIndex));
+        ArgumentException.ThrowIfNullOrWhiteSpace(message);
+        _cellValidations[(rowIndex, columnIndex)] = new CellValidation(severity, message);
+        InvalidateCell(columnIndex, rowIndex);
+    }
+
+    /// <summary>Clears one validation marker without modifying the cell value.</summary>
+    public bool ClearCellValidation(int rowIndex, int columnIndex)
+    {
+        var removed = _cellValidations.Remove((rowIndex, columnIndex));
+        if (removed && rowIndex >= 0 && rowIndex < RowCount && columnIndex >= 0 && columnIndex < ColumnCount)
+            InvalidateCell(columnIndex, rowIndex);
+        return removed;
+    }
+
+    /// <summary>Clears all visual validation markers.</summary>
+    public void ClearCellValidations()
+    {
+        _cellValidations.Clear();
+        Invalidate();
+    }
+
+    public enum CellValidationSeverity { Warning, Error }
+
+    private sealed record CellValidation(CellValidationSeverity Severity, string Message);
+
 
     /// <summary>Allows users to drag column headers to rearrange the display order.</summary>
     [Category("Behavior")]
@@ -283,6 +324,28 @@ public class LabzDataGrid : DataGridView
         base.OnFontChanged(e);
         if (ColumnHeadersDefaultCellStyle is not null)
             UpdateHeaderFont();
+    }
+
+    protected override void OnCellToolTipTextNeeded(DataGridViewCellToolTipTextNeededEventArgs e)
+    {
+        base.OnCellToolTipTextNeeded(e);
+        if (_cellValidations.TryGetValue((e.RowIndex, e.ColumnIndex), out var validation))
+            e.ToolTipText = validation.Message;
+    }
+
+    protected override void OnCellPainting(DataGridViewCellPaintingEventArgs e)
+    {
+        base.OnCellPainting(e);
+        if (e.RowIndex < 0 || e.ColumnIndex < 0 ||
+            !_cellValidations.TryGetValue((e.RowIndex, e.ColumnIndex), out var validation))
+            return;
+        var color = validation.Severity == CellValidationSeverity.Error
+            ? Color.FromArgb(205, 65, 65)
+            : Color.FromArgb(210, 150, 35);
+        using var pen = new Pen(color, 2f);
+        var bounds = e.CellBounds;
+        if (bounds.Width > 4 && bounds.Height > 4)
+            e.Graphics.DrawLine(pen, bounds.Left + 3, bounds.Bottom - 3, bounds.Right - 3, bounds.Bottom - 3);
     }
 
     protected override void OnCellFormatting(DataGridViewCellFormattingEventArgs e)
