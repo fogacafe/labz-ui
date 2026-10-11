@@ -31,6 +31,7 @@ public class LabzAppShell : UserControl
     private LabzTabWorkspace? _workspace;
     private Func<string, string, Control>? _pageFactory;
     private bool _commandPaletteEnabled = true;
+    private bool _resetWorkspaceOnTenantChange;
 
     public LabzAppShell()
     {
@@ -43,6 +44,8 @@ public class LabzAppShell : UserControl
         _sidebar.Controls.Add(_moduleTitle);
         _moduleButtons.SizeChanged += (_, _) => UpdateButtonWidths(_moduleButtons, 44);
         _pageButtons.SizeChanged += (_, _) => UpdateButtonWidths(_pageButtons, 190);
+        _statusBar.TenantChanging += OnTenantChanging;
+        _statusBar.TenantChanged += OnTenantChanged;
         UiThemeManager.ThemeChanged += OnThemeChanged;
         ApplyTheme();
     }
@@ -75,6 +78,26 @@ public class LabzAppShell : UserControl
     [Browsable(false)]
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public LabzStatusBar StatusBar => _statusBar;
+
+    /// <summary>Close open workspace pages after a successful tenant switch; dirty tabs may veto beforehand.</summary>
+    [Category("Behavior")]
+    [DefaultValue(false)]
+    public bool ResetWorkspaceOnTenantChange
+    {
+        get => _resetWorkspaceOnTenantChange;
+        set => _resetWorkspaceOnTenantChange = value;
+    }
+
+    private void OnTenantChanging(object? sender, LabzTenantChangingEventArgs e)
+    {
+        if (_resetWorkspaceOnTenantChange && _workspace is not null && !_workspace.CanCloseAll())
+            e.Cancel = true;
+    }
+
+    private void OnTenantChanged(object? sender, LabzTenantChangedEventArgs e)
+    {
+        if (_resetWorkspaceOnTenantChange) _workspace?.CloseAllAfterApproval();
+    }
 
     /// <summary>Connects navigation to persistent tabs; the factory is called only for new tabs.</summary>
     public void ConnectWorkspace(LabzTabWorkspace workspace, Func<string, string, Control> pageFactory)
@@ -271,7 +294,12 @@ public class LabzAppShell : UserControl
 
     protected override void Dispose(bool disposing)
     {
-        if (disposing) UiThemeManager.ThemeChanged -= OnThemeChanged;
+        if (disposing)
+        {
+            _statusBar.TenantChanging -= OnTenantChanging;
+            _statusBar.TenantChanged -= OnTenantChanged;
+            UiThemeManager.ThemeChanged -= OnThemeChanged;
+        }
         base.Dispose(disposing);
     }
 }
