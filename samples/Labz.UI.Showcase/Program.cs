@@ -26,6 +26,7 @@ public sealed class ShowcaseForm : Form
     private readonly LabzProgressBar _progress = new() { Value = 65, ShowPercentage = true, Width = 260 };
     private readonly LabzLabel _status = new() { Text = "Ready", Variant = LabzLabelVariant.Muted };
     private readonly Bitmap _sampleImage = CreateSampleImage();
+    private readonly LabzTooltip _tooltips = new();
 
     public ShowcaseForm()
     {
@@ -57,6 +58,7 @@ public sealed class ShowcaseForm : Form
         _page.Controls.Add(gallery);
 
         AddCard(gallery, "Buttons", CreateButtons());
+        AddCard(gallery, "Navigation", CreateNavigation());
         AddCard(gallery, "Dialogs", CreateDialogs());
         AddCard(gallery, "Toast notifications", CreateToasts());
         AddCard(gallery, "Text & validation", CreateTextInputs());
@@ -88,6 +90,24 @@ public sealed class ShowcaseForm : Form
         content.Dock = DockStyle.Fill;
         card.Controls.Add(content);
         gallery.Controls.Add(card, col, row);
+    }
+
+    private Control CreateNavigation()
+    {
+        var panel = Stack();
+        var tabs = new LabzTabs { Width = 400, Height = 175 };
+        var overview = new TabPage("Overview");
+        overview.Controls.Add(new LabzLabel { Text = "Overview content", Location = new Point(18, 20) });
+        var details = new TabPage("Details");
+        details.Controls.Add(new LabzLabel { Text = "Details content", Location = new Point(18, 20) });
+        tabs.TabPages.AddRange([overview, details]);
+        var menu = new LabzContextMenu();
+        menu.Items.Add("Refresh", null, (_, _) => _status.Text = "Refresh selected");
+        menu.Items.Add("Copy", null, (_, _) => _status.Text = "Copy selected");
+        tabs.ContextMenuStrip = menu;
+        _tooltips.SetLabzToolTip(tabs, "Ctrl+Tab changes pages; right-click for actions");
+        panel.Controls.Add(tabs);
+        return panel;
     }
 
     private Control CreateButtons()
@@ -294,6 +314,7 @@ public sealed class ShowcaseForm : Form
         {
             UiThemeManager.ThemeChanged -= RefreshTheme;
             _sampleImage.Dispose();
+            _tooltips.Dispose();
         }
         base.Dispose(disposing);
     }
