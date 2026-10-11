@@ -10,6 +10,12 @@ internal static class Program
     private static void Main()
     {
         ApplicationConfiguration.Initialize();
+        using var host = CreateDemoHost();
+        Application.Run(host);
+    }
+
+    public static Form CreateDemoHost()
+    {
         var services = new ServiceCollection();
         services.AddLabzScreen<TradeForm, TradePresenter>();
         services.AddScoped<ScreenState>();
@@ -24,8 +30,18 @@ internal static class Program
         services.AddTransient<PositionPresenter>();
         services.AddSingleton<DeferredScreenFactory>();
         services.AddTransient<ScreenNavigator>();
-        using var provider = services.BuildServiceProvider(validateScopes: true);
-        Application.Run(new DemoShell(provider.GetRequiredService<ScreenFactory>(), provider.GetRequiredService<DeferredScreenFactory>(), provider.GetRequiredService<ScreenNavigator>()));
+        var provider = services.BuildServiceProvider(validateScopes: true);
+        try
+        {
+            var host = new DemoShell(provider.GetRequiredService<ScreenFactory>(), provider.GetRequiredService<DeferredScreenFactory>(), provider.GetRequiredService<ScreenNavigator>());
+            host.Disposed += (_, _) => provider.Dispose();
+            return host;
+        }
+        catch
+        {
+            provider.Dispose();
+            throw;
+        }
     }
 }
 
