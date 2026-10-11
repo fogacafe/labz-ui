@@ -3,6 +3,7 @@ using Labz.UI.WinForms.Controls;
 using Labz.UI.WinForms.Layout;
 using Labz.UI.WinForms.Dialogs;
 using Labz.UI.WinForms.Notifications;
+using Labz.UI.WinForms.Navigation;
 using Labz.UI.Validation;
 
 namespace Labz.UI.Showcase;
@@ -59,6 +60,7 @@ public sealed class ShowcaseForm : Form
 
         AddCard(gallery, "Buttons", CreateButtons());
         AddCard(gallery, "Navigation", CreateNavigation());
+        AddCard(gallery, "App shell", CreateAppShell());
         AddCard(gallery, "Advanced inputs", CreateAdvancedInputs());
         AddCard(gallery, "Visual components", CreateVisualComponents());
         AddCard(gallery, "Data grid", CreateDataGrid());
@@ -93,6 +95,21 @@ public sealed class ShowcaseForm : Form
         content.Dock = DockStyle.Fill;
         card.Controls.Add(content);
         gallery.Controls.Add(card, col, row);
+    }
+
+    private static Control CreateAppShell()
+    {
+        var shell = new LabzAppShell();
+        var bonds = new LabzModule("bonds", "Public Bonds", "B");
+        bonds.Pages.Add(new LabzNavigationPage("trades", "Trades", "Operations"));
+        bonds.Pages.Add(new LabzNavigationPage("import", "Import", "Operations"));
+        var funds = new LabzModule("funds", "Funds", "F");
+        funds.Pages.Add(new LabzNavigationPage("positions", "Positions", "Queries"));
+        shell.SetModules([bonds, funds]);
+        var caption = new Label { Text = "Select a page from the sidebar", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleCenter };
+        shell.ContentControls.Add(caption);
+        shell.PageRequested += (_, args) => caption.Text = args.ModuleId + " / " + args.PageId;
+        return shell;
     }
 
     private static Control CreateDataGrid()
