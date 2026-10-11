@@ -13,11 +13,7 @@ public sealed class ScreenWorkspace : IAsyncDisposable
     private readonly Dictionary<object, (TabPage Page, Func<ValueTask> Close)> _screens = new();
     private readonly HashSet<Task> _closing = new();
     private readonly HashSet<object> _closePending = new();
-    private readonly HashSet<object> _closePending = new();
     private bool _disposed;
-
-    /// <summary>Optional per-screen close approval. Return false to keep the tab open.</summary>
-    public Func<object, CancellationToken, ValueTask<bool>>? CanCloseAsync { get; set; }
 
     /// <summary>Optional per-screen close approval. Return false to keep the tab open.</summary>
     public Func<object, CancellationToken, ValueTask<bool>>? CanCloseAsync { get; set; }
