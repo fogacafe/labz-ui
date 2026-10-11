@@ -3,7 +3,7 @@ using Labz.UI.Presentation;
 namespace Labz.UI.PresentationDemo;
 
 /// <summary>Demonstrates immediate tab creation, visible loading, and cancellation on close.</summary>
-internal sealed class DeferredTradePresenter : IAsyncScreenPresenter<TradeForm>
+internal sealed class DeferredTradePresenter(IScreenLoadingManager loading) : IAsyncScreenPresenter<TradeForm>
 {
     private TradeForm? _view;
 
@@ -11,7 +11,11 @@ internal sealed class DeferredTradePresenter : IAsyncScreenPresenter<TradeForm>
 
     public async Task InitializeAsync(CancellationToken cancellationToken)
     {
-        await Task.Delay(TimeSpan.FromSeconds(4), cancellationToken);
+        using var first = loading.Begin("Fetching trade");
+        using var second = loading.Begin("Fetching counterparties");
+        await Task.Delay(TimeSpan.FromSeconds(2), cancellationToken);
+        second.Dispose();
+        await Task.Delay(TimeSpan.FromSeconds(2), cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
         if (_view is { IsDisposed: false } view)
             view.InstanceLabel.Text = "Trade data loaded successfully";
