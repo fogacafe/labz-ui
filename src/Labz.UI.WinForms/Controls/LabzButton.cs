@@ -7,9 +7,13 @@ namespace Labz.UI.WinForms.Controls;
 
 public enum LabzButtonVariant { Solid, Outline, Ghost }
 public enum LabzButtonSize { Small, Medium, Large }
+public enum LabzButtonImagePlacement { Left, Right, Top, Bottom, ImageOnly }
 
 public class LabzButton : Button
 {
+    private LabzButtonImagePlacement _imagePlacement;
+    private int _imageSpacing = 6;
+    private Size _imageSize = new(18, 18);
     private bool _hovered;
     private bool _pressed;
     private LabzButtonVariant _variant;
@@ -36,6 +40,35 @@ public class LabzButton : Button
     {
         get => _buttonSize;
         set { _buttonSize = value; ApplySize(); Invalidate(); }
+    }
+
+    [Category("Appearance")]
+    [DefaultValue(LabzButtonImagePlacement.Left)]
+    public LabzButtonImagePlacement ImagePlacement
+    {
+        get => _imagePlacement;
+        set { _imagePlacement = value; Invalidate(); }
+    }
+
+    [Category("Appearance")]
+    [DefaultValue(6)]
+    public int ImageSpacing
+    {
+        get => _imageSpacing;
+        set { ArgumentOutOfRangeException.ThrowIfNegative(value); _imageSpacing = value; Invalidate(); }
+    }
+
+    [Category("Appearance")]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
+    public Size ImageSize
+    {
+        get => _imageSize;
+        set
+        {
+            if (value.Width <= 0 || value.Height <= 0) throw new ArgumentOutOfRangeException(nameof(value));
+            _imageSize = value;
+            Invalidate();
+        }
     }
 
     // Compatibility with the first experimental button API.
@@ -128,15 +161,62 @@ public class LabzButton : Button
         var textColor = !Enabled ? Color.LightGray
             : Variant == LabzButtonVariant.Solid ? Color.White : theme.Foreground;
 
-        TextRenderer.DrawText(e.Graphics, Text, Font, bounds, textColor,
-            TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter |
-            TextFormatFlags.EndEllipsis | TextFormatFlags.SingleLine);
+        DrawContent(e.Graphics, bounds, textColor);
 
         if (Focused && ShowFocusCues)
         {
             ControlPaint.DrawFocusRectangle(e.Graphics, Rectangle.Inflate(bounds, -4, -4),
                 theme.Foreground, fill);
         }
+    }
+
+    private void DrawContent(Graphics graphics, Rectangle bounds, Color textColor)
+    {
+        var image = Image;
+        if (image is null)
+        {
+            TextRenderer.DrawText(graphics, Text, Font, bounds, textColor,
+                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter |
+                TextFormatFlags.EndEllipsis | TextFormatFlags.SingleLine);
+            return;
+        }
+
+        var iconWidth = Math.Min(ImageSize.Width, Math.Max(1, bounds.Width - 8));
+        var iconHeight = Math.Min(ImageSize.Height, Math.Max(1, bounds.Height - 8));
+        var showText = ImagePlacement != LabzButtonImagePlacement.ImageOnly && !string.IsNullOrEmpty(Text);
+        var spacing = showText ? ImageSpacing : 0;
+        var textSize = showText ? TextRenderer.MeasureText(graphics, Text, Font,
+            new Size(Math.Max(1, bounds.Width - 12), Math.Max(1, bounds.Height - 8)),
+            TextFormatFlags.SingleLine) : Size.Empty;
+        Rectangle imageRect;
+        Rectangle textRect;
+        if (ImagePlacement is LabzButtonImagePlacement.Top or LabzButtonImagePlacement.Bottom)
+        {
+            var totalHeight = iconHeight + spacing + (showText ? textSize.Height : 0);
+            var top = bounds.Y + (bounds.Height - totalHeight) / 2;
+            var imageFirst = ImagePlacement == LabzButtonImagePlacement.Top;
+            imageRect = new Rectangle(bounds.X + (bounds.Width - iconWidth) / 2,
+                imageFirst ? top : top + textSize.Height + spacing, iconWidth, iconHeight);
+            textRect = new Rectangle(bounds.X + 4, imageFirst ? top + iconHeight + spacing : top,
+                Math.Max(0, bounds.Width - 8), textSize.Height);
+        }
+        else
+        {
+            var availableText = Math.Max(0, bounds.Width - iconWidth - spacing - 12);
+            var measuredText = Math.Min(textSize.Width, availableText);
+            var totalWidth = iconWidth + spacing + (showText ? measuredText : 0);
+            var left = bounds.X + (bounds.Width - totalWidth) / 2;
+            var imageFirst = ImagePlacement != LabzButtonImagePlacement.Right;
+            imageRect = new Rectangle(imageFirst ? left : left + measuredText + spacing,
+                bounds.Y + (bounds.Height - iconHeight) / 2, iconWidth, iconHeight);
+            textRect = new Rectangle(imageFirst ? left + iconWidth + spacing : left,
+                bounds.Y, measuredText, bounds.Height);
+        }
+        graphics.DrawImage(image, imageRect);
+        if (showText && textRect.Width > 0 && textRect.Height > 0)
+            TextRenderer.DrawText(graphics, Text, Font, textRect, textColor,
+                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter |
+                TextFormatFlags.EndEllipsis | TextFormatFlags.SingleLine);
     }
 
     private void ApplySize()
