@@ -7,5 +7,14 @@
     <Authors>Labz UI contributors</Authors>
     <RepositoryUrl>https://github.com/fogacafe/labz-ui</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/fogacafe/labz-ui</PackageProjectUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <Description>Lightweight themed UI building blocks for .NET 10 and Windows Forms.</Description>
+    <PackageTags>winforms;ui;controls;desktop;labz</PackageTags>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
   </PropertyGroup>
+  <ItemGroup Condition="'$(IsPackable)' != 'false'">
+    <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="/" Visible="false" />
+  </ItemGroup>
 </Project>
