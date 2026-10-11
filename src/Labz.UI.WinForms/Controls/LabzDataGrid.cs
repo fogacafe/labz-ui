@@ -10,6 +10,7 @@ public class LabzDataGrid : DataGridView
 {
     private bool _stripedRows = true;
     private Font? _headerFont;
+    private bool _columnSelectorEnabled = true;
 
     /// <summary>Allows users to drag column headers to rearrange the display order.</summary>
     [Category("Behavior")]
@@ -18,6 +19,54 @@ public class LabzDataGrid : DataGridView
     {
         get => AllowUserToOrderColumns;
         set => AllowUserToOrderColumns = value;
+    }
+
+    /// <summary>Shows a column visibility selector when a column header is right-clicked.</summary>
+    [Category("Behavior")]
+    [DefaultValue(true)]
+    public bool ColumnSelectorEnabled
+    {
+        get => _columnSelectorEnabled;
+        set => _columnSelectorEnabled = value;
+    }
+
+    /// <summary>Creates a themed column selector menu. The caller owns the returned menu.</summary>
+    public ContextMenuStrip CreateColumnSelectorMenu()
+    {
+        var menu = new ContextMenuStrip();
+        var theme = UiThemeManager.Current;
+        menu.BackColor = theme.Surface;
+        menu.ForeColor = theme.Foreground;
+        foreach (var column in Columns.Cast<DataGridViewColumn>().OrderBy(x => x.DisplayIndex))
+        {
+            var item = new ToolStripMenuItem(
+                string.IsNullOrWhiteSpace(column.HeaderText) ? column.Name : column.HeaderText)
+            {
+                Checked = column.Visible,
+                CheckOnClick = false,
+                Tag = column.Name
+            };
+            item.Click += (_, _) =>
+            {
+                // Keep at least one visible column so users cannot hide the entire grid.
+                if (column.Visible && Columns.Cast<DataGridViewColumn>().Count(x => x.Visible) <= 1)
+                    return;
+                column.Visible = !column.Visible;
+                item.Checked = column.Visible;
+            };
+            menu.Items.Add(item);
+        }
+        return menu;
+    }
+
+    protected override void OnColumnHeaderMouseClick(DataGridViewCellMouseEventArgs e)
+    {
+        base.OnColumnHeaderMouseClick(e);
+        if (!_columnSelectorEnabled || e.Button != MouseButtons.Right) return;
+        var menu = CreateColumnSelectorMenu();
+        menu.Closed += (_, _) => menu.Dispose();
+        var position = PointToClient(Cursor.Position);
+        menu.Show(this, position);
     }
 
     /// <summary>Exports column order, visibility and widths as portable JSON.</summary>
