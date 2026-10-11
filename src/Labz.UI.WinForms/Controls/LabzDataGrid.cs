@@ -13,7 +13,11 @@ public class LabzDataGrid : DataGridView
     private bool _columnSelectorEnabled = true;
     private readonly Dictionary<string, bool> _groupExpanded = new(StringComparer.Ordinal);
     private readonly Dictionary<string, List<int>> _groupRows = new(StringComparer.Ordinal);
-    private readonly Dictionary<int, string> _rowGroupKeys = new();
+    private Func<DataGridViewRow, string>? _groupKeySelector;
+    private bool _updatingGroups;
+
+    /// <summary>Raised when local group keys or counts change.</summary>
+    public event EventHandler? GroupsChanged;
 
     /// <summary>Creates a one-level grouping projection for currently bound rows.</summary>
     /// <remarks>Grouping is local-only and does not support virtual mode or server paging.</remarks>
@@ -22,19 +26,36 @@ public class LabzDataGrid : DataGridView
         ArgumentNullException.ThrowIfNull(keySelector);
         if (VirtualMode || DataSource is null)
             throw new InvalidOperationException("Grouping requires a bound, non-virtual grid.");
+        _groupKeySelector = keySelector;
+        RebuildGroups();
+    }
+
+    /// <summary>Rebuilds the group projection after data or key changes.</summary>
+    public void RefreshGrouping()
+    {
+        if (_groupKeySelector is not null) RebuildGroups();
+    }
+
+    private void RebuildGroups()
+    {
+        if (_updatingGroups || _groupKeySelector is null) return;
+        _updatingGroups = true;
+        try
+        {
         _groupRows.Clear();
-        _rowGroupKeys.Clear();
         for (var index = 0; index < RowCount; index++)
         {
             var row = Rows[index];
             if (row.IsNewRow) continue;
-            var key = keySelector(row) ?? string.Empty;
+            var key = _groupKeySelector(row) ?? string.Empty;
             if (!_groupRows.TryGetValue(key, out var members))
                 _groupRows[key] = members = new List<int>();
             members.Add(index);
-            _rowGroupKeys[index] = key;
         }
         ApplyGroupVisibility();
+        }
+        finally { _updatingGroups = false; }
+        GroupsChanged?.Invoke(this, EventArgs.Empty);
     }
 
     /// <summary>Gets local group keys and counts for a host-rendered group header.</summary>
@@ -47,6 +68,7 @@ public class LabzDataGrid : DataGridView
         if (!_groupRows.ContainsKey(key)) return false;
         _groupExpanded[key] = expanded;
         ApplyGroupVisibility();
+        GroupsChanged?.Invoke(this, EventArgs.Empty);
         return true;
     }
 
@@ -54,10 +76,11 @@ public class LabzDataGrid : DataGridView
     public void ClearGrouping()
     {
         _groupRows.Clear();
-        _rowGroupKeys.Clear();
+        _groupKeySelector = null;
         _groupExpanded.Clear();
         foreach (DataGridViewRow row in Rows)
             if (!row.IsNewRow) row.Visible = true;
+        GroupsChanged?.Invoke(this, EventArgs.Empty);
     }
 
     private void ApplyGroupVisibility()
@@ -76,6 +99,18 @@ public class LabzDataGrid : DataGridView
         }
     }
 
+
+    protected override void OnDataBindingComplete(DataGridViewBindingCompleteEventArgs e)
+    {
+        base.OnDataBindingComplete(e);
+        RefreshGrouping();
+    }
+
+    protected override void OnSorted(EventArgs e)
+    {
+        base.OnSorted(e);
+        RefreshGrouping();
+    }
 
     private readonly Dictionary<(int Row, int Column), CellValidation> _cellValidations = new();
     private readonly Dictionary<int, CellValidation> _rowValidations = new();
