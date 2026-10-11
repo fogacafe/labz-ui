@@ -21,7 +21,9 @@ internal sealed class PositionForm : Form
     }
 }
 
-internal sealed class PositionPresenter(ScreenState state, IApplicationEventBus events) : IAsyncScreenPresenter<PositionForm>
+internal sealed record PositionsRequest(string Portfolio);
+
+internal sealed class PositionPresenter(ScreenState state, IApplicationEventBus events) : IAsyncScreenPresenter<PositionForm>, IScreenParameters<PositionsRequest>
 {
     private IDisposable? _subscription;
     private PositionsRequest? _request;
