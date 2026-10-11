@@ -240,7 +240,7 @@ public sealed class ShowcaseForm : Form
         using var g = Graphics.FromImage(bitmap);
         g.Clear(Color.FromArgb(61, 106, 230));
         using var brush = new SolidBrush(Color.FromArgb(255, 194, 86));
-        g.FillEllipse(110, 20, 100, 100);
+        g.FillEllipse(brush, 110, 20, 100, 100);
         using var pen = new Pen(Color.White, 7);
         g.DrawLine(pen, 0, 160, 120, 90);
         g.DrawLine(pen, 120, 90, 220, 155);
