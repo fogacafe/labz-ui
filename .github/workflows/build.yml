@@ -41,7 +41,7 @@ jobs:
         shell: pwsh
         run: |
           $feed = (Resolve-Path './artifacts/nuget').Path
-          dotnet restore samples/Labz.UI.PackageSmoke/Labz.UI.PackageSmoke.csproj --source $feed --source https://api.nuget.org/v3/index.json
+          dotnet restore samples/Labz.UI.PackageSmoke/Labz.UI.PackageSmoke.csproj --source $feed
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           dotnet build samples/Labz.UI.PackageSmoke/Labz.UI.PackageSmoke.csproj --no-restore --configuration Release
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
