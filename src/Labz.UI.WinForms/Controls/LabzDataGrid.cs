@@ -75,6 +75,34 @@ public class LabzDataGrid : DataGridView
     /// <summary>Clears a supported BindingSource filter.</summary>
     public bool TryClearFilter() => TryApplyFilter(null);
 
+    /// <summary>Configures unbound virtual rows. Handle CellValueNeeded to supply values on demand.</summary>
+    /// <remarks>Virtual mode cannot be enabled while a bound DataSource is attached.</remarks>
+    public void ConfigureVirtualRows(int rowCount)
+    {
+        if (rowCount < 0) throw new ArgumentOutOfRangeException(nameof(rowCount));
+        if (DataSource is not null)
+            throw new InvalidOperationException("Remove the DataSource before enabling virtual rows.");
+        VirtualMode = true;
+        RowCount = rowCount;
+    }
+
+    /// <summary>Updates the virtual row count without resetting columns or event handlers.</summary>
+    public void UpdateVirtualRowCount(int rowCount)
+    {
+        if (!VirtualMode || DataSource is not null)
+            throw new InvalidOperationException("Configure unbound virtual mode first.");
+        if (rowCount < 0) throw new ArgumentOutOfRangeException(nameof(rowCount));
+        RowCount = rowCount;
+    }
+
+    /// <summary>Exits virtual mode and clears its unbound rows.</summary>
+    public void ClearVirtualRows()
+    {
+        if (!VirtualMode || DataSource is not null) return;
+        RowCount = 0;
+        VirtualMode = false;
+    }
+
     /// <summary>Convenience helper for bound lists; DataSource remains the native binding API.</summary>
     public void Bind<T>(BindingList<T> items) => DataSource = items;
 
