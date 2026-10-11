@@ -5,6 +5,7 @@ namespace Labz.UI.PresentationDemo;
 /// <summary>A second view type used to verify heterogeneous tabs and scoped state.</summary>
 internal sealed class PositionForm : Form
 {
+    public Label NotificationLabel { get; } = new() { Dock = DockStyle.Top, Height = 35, Text = "No trade save notifications yet" };
     public Label StateLabel { get; } = new() { Dock = DockStyle.Top, Height = 52 };
     public PositionForm()
     {
@@ -15,13 +16,27 @@ internal sealed class PositionForm : Form
             Text = "Positions overview (demo)\n\nPETR4   1200\nVALE3   800\nITUB4   450",
             TextAlign = System.Drawing.ContentAlignment.MiddleCenter
         });
+        Controls.Add(NotificationLabel);
         Controls.Add(StateLabel);
     }
 }
 
-internal sealed class PositionPresenter(ScreenState state) : IAsyncScreenPresenter<PositionForm>
+internal sealed class PositionPresenter(ScreenState state, IApplicationEventBus events) : IAsyncScreenPresenter<PositionForm>
 {
-    public void Attach(PositionForm view) => view.StateLabel.Text = $"Position scope: {state.InstanceId}";
+    private IDisposable? _subscription;
+    public void Attach(PositionForm view)
+    {
+        view.StateLabel.Text = $"Position scope: {state.InstanceId}";
+        _subscription = events.Subscribe<DemoTradeSaved>(e =>
+        {
+            if (!view.IsDisposed) view.NotificationLabel.Text = $"Trade #{e.TradeId} saved — positions notified";
+        });
+    }
     public Task InitializeAsync(CancellationToken cancellationToken) => Task.CompletedTask;
-    public Task CloseAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+    public Task CloseAsync(CancellationToken cancellationToken)
+    {
+        _subscription?.Dispose();
+        _subscription = null;
+        return Task.CompletedTask;
+    }
 }

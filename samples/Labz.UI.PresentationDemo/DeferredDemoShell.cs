@@ -3,11 +3,23 @@ using Labz.UI.Presentation;
 namespace Labz.UI.PresentationDemo;
 
 /// <summary>Demonstrates immediate tab creation, visible loading, and cancellation on close.</summary>
-internal sealed class DeferredTradePresenter(IScreenLoadingManager loading) : IAsyncScreenPresenter<TradeForm>
+internal sealed record DemoTradeSaved(int TradeId);
+
+internal sealed class DeferredTradePresenter(IScreenLoadingManager loading, IApplicationEventBus events) : IAsyncScreenPresenter<TradeForm>
 {
     private TradeForm? _view;
+    private Button? _publish;
 
-    public void Attach(TradeForm view) => _view = view;
+    public void Attach(TradeForm view)
+    {
+        _view = view;
+        _publish = new Button { Text = "Publish trade #1024 saved", Dock = DockStyle.Top };
+        _publish.Click += PublishTradeSaved;
+        view.Controls.Add(_publish);
+        _publish.BringToFront();
+    }
+
+    private void PublishTradeSaved(object? sender, EventArgs args) => events.Publish(new DemoTradeSaved(1024));
 
     public async Task InitializeAsync(CancellationToken cancellationToken)
     {
@@ -21,7 +33,11 @@ internal sealed class DeferredTradePresenter(IScreenLoadingManager loading) : IA
             view.InstanceLabel.Text = "Trade data loaded successfully";
     }
 
-    public Task CloseAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+    public Task CloseAsync(CancellationToken cancellationToken)
+    {
+        if (_publish is not null) _publish.Click -= PublishTradeSaved;
+        return Task.CompletedTask;
+    }
 }
 
 internal sealed class DeferredDemoShell : Form
