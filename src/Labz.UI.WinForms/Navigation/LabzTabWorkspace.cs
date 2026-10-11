@@ -16,6 +16,7 @@ public class LabzTabWorkspace : UserControl
     private readonly Dictionary<string, WorkspacePage> _pages = new(StringComparer.OrdinalIgnoreCase);
     private string? _activePageId;
     private bool _keyboardShortcutsEnabled = true;
+    private bool _isResetting;
 
     public LabzTabWorkspace()
     {
@@ -40,6 +41,10 @@ public class LabzTabWorkspace : UserControl
         get => _keyboardShortcutsEnabled;
         set => _keyboardShortcutsEnabled = value;
     }
+
+    /// <summary>True while a bulk workspace reset is in progress.</summary>
+    [Browsable(false)]
+    public bool IsResetting => _isResetting;
 
     public event EventHandler<LabzWorkspacePageEventArgs>? ActivePageChanged;
     public event EventHandler<LabzWorkspacePageEventArgs>? PageClosed;
@@ -134,12 +139,39 @@ public class LabzTabWorkspace : UserControl
         return base.ProcessCmdKey(ref msg, keyData);
     }
 
-    public bool Close(string id)
+    /// <summary>Preflights every close guard, then closes all pages as one UI operation.</summary>
+    public bool TryCloseAll()
+    {
+        if (_isResetting) return false;
+        var snapshot = _pages.Values.Select(p => (p.Id, p.Title)).ToArray();
+        foreach (var (id, title) in snapshot)
+        {
+            var closing = new LabzWorkspacePageClosingEventArgs(id, title);
+            PageClosing?.Invoke(this, closing);
+            if (closing.Cancel) return false;
+        }
+        _isResetting = true;
+        try
+        {
+            foreach (var (id, _) in snapshot)
+                if (!CloseCore(id, skipGuard: true)) return false;
+            return true;
+        }
+        finally { _isResetting = false; }
+    }
+
+    public bool Close(string id) => CloseCore(id, skipGuard: false);
+
+    private bool CloseCore(string id, bool skipGuard)
+
     {
         if (!_pages.TryGetValue(id, out var page)) return false;
-        var closing = new LabzWorkspacePageClosingEventArgs(page.Id, page.Title);
-        PageClosing?.Invoke(this, closing);
-        if (closing.Cancel) return false;
+        if (!skipGuard)
+        {
+            var closing = new LabzWorkspacePageClosingEventArgs(page.Id, page.Title);
+            PageClosing?.Invoke(this, closing);
+            if (closing.Cancel) return false;
+        }
         // A closing handler may have already removed this page.
         if (!_pages.TryGetValue(id, out page)) return false;
         var wasActive = _activePageId == page.Id;
