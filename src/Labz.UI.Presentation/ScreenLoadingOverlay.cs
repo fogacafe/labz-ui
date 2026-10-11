@@ -16,21 +16,23 @@ public sealed class ScreenLoadingOverlay : UserControl
         TextAlign = ContentAlignment.MiddleCenter,
         Font = new Font(SystemFonts.MessageBoxFont.FontFamily, 12, FontStyle.Regular)
     };
-    private readonly ProgressBar _progress = new()
-    {
-        Dock = DockStyle.Bottom,
-        Height = 5,
-        Style = ProgressBarStyle.Marquee,
-        MarqueeAnimationSpeed = 24
-    };
+    private readonly ScreenSpinner _spinner = new() { Anchor = AnchorStyles.None };
+    private readonly Panel _content = new() { Dock = DockStyle.Fill };
     private IScreenLoadingManager? _manager;
 
     public ScreenLoadingOverlay()
     {
         Dock = DockStyle.Fill;
         BackColor = Color.FromArgb(245, 246, 249);
-        Controls.Add(_message);
-        Controls.Add(_progress);
+        _content.Controls.Add(_message);
+        _content.Controls.Add(_spinner);
+        Controls.Add(_content);
+        _content.Resize += (_, _) =>
+        {
+            _spinner.Location = new Point((_content.Width - _spinner.Width) / 2,
+                Math.Max(0, (_content.Height - _spinner.Height) / 2 - 35));
+        };
+        _message.Padding = new Padding(0, 75, 0, 0);
         Visible = false;
     }
 
@@ -65,6 +67,7 @@ public sealed class ScreenLoadingOverlay : UserControl
             ? (_manager.Message ?? "Loading…") + $" ({_manager.ActiveCount})"
             : string.Empty;
         Visible = loading;
+        _spinner.Animating = loading;
         if (loading) BringToFront();
     }
 
