@@ -11,7 +11,13 @@ namespace Labz.UI.WinForms.Controls;
 public class LabzDatePicker : UserControl
 {
     private readonly TextBox _editor = new() { BorderStyle = BorderStyle.None };
-    private readonly MonthCalendar _calendar = new() { MaxSelectionCount = 1, ShowToday = true };
+    private readonly Panel _calendar = new() { Size = new Size(280, 292) };
+    private readonly Label _monthTitle = new() { TextAlign = ContentAlignment.MiddleCenter };
+    private readonly Button _previous = new() { Text = "‹", FlatStyle = FlatStyle.Flat, TabStop = false };
+    private readonly Button _next = new() { Text = "›", FlatStyle = FlatStyle.Flat, TabStop = false };
+    private readonly Label[] _weekdays = new Label[7];
+    private readonly Button[] _days = new Button[42];
+    private DateTime _visibleMonth;
     private readonly ToolStripDropDown _popup = new() { AutoClose = true, Padding = Padding.Empty, Margin = Padding.Empty };
     private readonly List<ScrollableControl> _scrollParents = [];
     private Form? _owner;
@@ -29,18 +35,31 @@ public class LabzDatePicker : UserControl
         Size = new Size(240, 42);
         TabStop = true;
         Controls.Add(_editor);
+        _visibleMonth = new DateTime(_value.Year, _value.Month, 1);
+        _previous.FlatAppearance.BorderSize = 0;
+        _next.FlatAppearance.BorderSize = 0;
+        _previous.Click += (_, _) => ChangeMonth(-1);
+        _next.Click += (_, _) => ChangeMonth(1);
+        _calendar.Controls.AddRange([_previous, _next, _monthTitle]);
+        for (var i = 0; i < 7; i++)
+        {
+            _weekdays[i] = new Label { TextAlign = ContentAlignment.MiddleCenter };
+            _calendar.Controls.Add(_weekdays[i]);
+        }
+        for (var i = 0; i < 42; i++)
+        {
+            var button = new Button { FlatStyle = FlatStyle.Flat, TabStop = false };
+            button.FlatAppearance.BorderSize = 0;
+            button.Click += OnDayClicked;
+            _days[i] = button;
+            _calendar.Controls.Add(button);
+        }
         _editor.Enter += (_, _) => Invalidate();
         _editor.Leave += (_, _) => { if (!_popup.Visible) CommitText(); Invalidate(); };
         _editor.KeyDown += OnEditorKeyDown;
         _editor.MouseEnter += (_, _) => { _hovered = true; Invalidate(); };
         _editor.MouseLeave += (_, _) => { _hovered = false; Invalidate(); };
         _editor.TextChanged += (_, _) => { if (!_formatting) OnTextChanged(EventArgs.Empty); };
-        _calendar.DateSelected += (_, e) =>
-        {
-            var time = ShowTime ? Value.TimeOfDay : TimeSpan.Zero;
-            Value = e.Start.Date + time;
-            _popup.Close();
-        };
         _popup.Items.Add(new ToolStripControlHost(_calendar)
         {
             AutoSize = false,
@@ -71,6 +90,7 @@ public class LabzDatePicker : UserControl
                 ValueChanged?.Invoke(this, EventArgs.Empty);
             }
             FormatValue();
+            if (_popup.Visible) RenderCalendar();
         }
     }
 
@@ -158,19 +178,70 @@ public class LabzDatePicker : UserControl
     {
         if (_popup.Visible) { _popup.Close(); return; }
         CommitText();
-        _calendar.MinDate = MinDate;
-        _calendar.MaxDate = MaxDate;
-        _calendar.SetDate(Value);
-        _calendar.TitleBackColor = UiThemeManager.Current.Primary;
-        _calendar.TitleForeColor = Color.White;
-        _calendar.ForeColor = UiThemeManager.Current.Foreground;
-        _calendar.BackColor = UiThemeManager.Current.Surface;
-        _calendar.TrailingForeColor = UiThemeManager.Current.Border;
-        _popup.BackColor = UiThemeManager.Current.Surface;
+        _visibleMonth = new DateTime(Value.Year, Value.Month, 1);
+        RenderCalendar();
         AttachOwner();
         // Use control-relative placement, never absolute screen coordinates.
         _popup.Show(this, new Point(0, Height), ToolStripDropDownDirection.BelowRight);
         Invalidate();
+    }
+
+    private void ChangeMonth(int delta)
+    {
+        if ((delta < 0 && _visibleMonth.Year == 1 && _visibleMonth.Month == 1) ||
+            (delta > 0 && _visibleMonth.Year == 9999 && _visibleMonth.Month == 12)) return;
+        _visibleMonth = _visibleMonth.AddMonths(delta);
+        RenderCalendar();
+    }
+
+    private void OnDayClicked(object? sender, EventArgs e)
+    {
+        if (sender is not Button { Tag: DateTime date }) return;
+        Value = date.Date.Add(ShowTime ? Value.TimeOfDay : TimeSpan.Zero);
+        _popup.Close();
+        _editor.Focus();
+    }
+
+    private void RenderCalendar()
+    {
+        var theme = UiThemeManager.Current;
+        _calendar.BackColor = theme.Surface;
+        _popup.BackColor = theme.Surface;
+        _monthTitle.Text = _visibleMonth.ToString("Y", CultureInfo.CurrentCulture);
+        _monthTitle.ForeColor = theme.Foreground;
+        _monthTitle.BackColor = theme.Surface;
+        _monthTitle.Bounds = new Rectangle(38, 8, 204, 30);
+        _previous.Bounds = new Rectangle(6, 8, 30, 30);
+        _next.Bounds = new Rectangle(244, 8, 30, 30);
+        foreach (var arrow in new[] { _previous, _next })
+        {
+            arrow.BackColor = theme.Surface;
+            arrow.ForeColor = theme.Foreground;
+        }
+        var firstDay = CultureInfo.CurrentCulture.DateTimeFormat.FirstDayOfWeek;
+        for (var col = 0; col < 7; col++)
+        {
+            var weekday = (DayOfWeek)(((int)firstDay + col) % 7);
+            var label = _weekdays[col];
+            label.Text = CultureInfo.CurrentCulture.DateTimeFormat.AbbreviatedDayNames[(int)weekday];
+            label.ForeColor = theme.Foreground;
+            label.BackColor = theme.Surface;
+            label.Bounds = new Rectangle(7 + col * 38, 44, 38, 26);
+        }
+        var offset = ((int)_visibleMonth.DayOfWeek - (int)firstDay + 7) % 7;
+        var firstCell = _visibleMonth.AddDays(-offset);
+        for (var i = 0; i < _days.Length; i++)
+        {
+            var day = firstCell.AddDays(i);
+            var button = _days[i];
+            button.Bounds = new Rectangle(7 + (i % 7) * 38, 74 + (i / 7) * 34, 38, 32);
+            button.Tag = day;
+            button.Text = day.Day.ToString(CultureInfo.CurrentCulture);
+            button.Enabled = day.Date >= MinDate.Date && day.Date <= MaxDate.Date;
+            button.BackColor = day.Date == Value.Date ? theme.Primary : theme.Surface;
+            button.ForeColor = day.Date == Value.Date ? Color.White :
+                day.Month == _visibleMonth.Month ? theme.Foreground : theme.Border;
+        }
     }
 
     private void AttachOwner()
@@ -288,6 +359,7 @@ public class LabzDatePicker : UserControl
         var theme = UiThemeManager.Current;
         _editor.BackColor = theme.Surface;
         _editor.ForeColor = theme.Foreground;
+        if (_popup.Visible) RenderCalendar();
         Invalidate();
     }
     private void OnThemeChanged(object? sender, EventArgs e)
