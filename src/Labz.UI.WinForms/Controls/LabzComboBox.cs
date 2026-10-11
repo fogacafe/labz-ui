@@ -18,6 +18,7 @@ public class LabzComboBox : UserControl
     private bool _showSearchButton;
     private readonly Button _arrow = new() { Text = "▾", FlatStyle = FlatStyle.Flat, TabStop = false, Cursor = Cursors.Hand };
     private bool _hovered;
+    private readonly Label _selectionDisplay = new() { AutoEllipsis = true, TextAlign = ContentAlignment.MiddleLeft, Cursor = Cursors.Hand, BackColor = Color.Transparent };
 
     public LabzComboBox()
     {
@@ -30,8 +31,8 @@ public class LabzComboBox : UserControl
             Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top
         };
         _combo.DrawItem += DrawComboItem;
-        _combo.SelectedIndexChanged += (_, e) => SelectedIndexChanged?.Invoke(this, e);
-        _combo.TextChanged += (_, _) => OnTextChanged(EventArgs.Empty);
+        _combo.SelectedIndexChanged += (_, e) => { UpdateSelectionDisplay(); SelectedIndexChanged?.Invoke(this, e); };
+        _combo.TextChanged += (_, _) => { UpdateSelectionDisplay(); OnTextChanged(EventArgs.Empty); };
         _searchButton = new Button
         {
             Text = "⌕",
@@ -46,18 +47,23 @@ public class LabzComboBox : UserControl
         SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
         _combo.FlatStyle = FlatStyle.Flat;
         _arrow.FlatAppearance.BorderSize = 0;
-        _arrow.Click += (_, _) => { _combo.Focus(); _combo.DroppedDown = !_combo.DroppedDown; };
+        _arrow.Click += (_, _) => ToggleDropDown();
+        _selectionDisplay.Click += (_, _) => ToggleDropDown();
+        _selectionDisplay.MouseEnter += (_, _) => { _hovered = true; Invalidate(); };
+        _selectionDisplay.MouseLeave += (_, _) => { _hovered = false; Invalidate(); };
         _combo.Enter += (_, _) => Invalidate();
         _combo.Leave += (_, _) => Invalidate();
         _combo.MouseEnter += (_, _) => { _hovered = true; Invalidate(); };
         _combo.MouseLeave += (_, _) => { _hovered = false; Invalidate(); };
         Controls.Add(_combo);
+        Controls.Add(_selectionDisplay);
         Controls.Add(_arrow);
         Controls.Add(_searchButton);
         Size = new Size(240, 42);
         UiThemeManager.ThemeChanged += OnThemeChanged;
         ApplyTheme();
         LayoutChildren();
+        UpdateSelectionDisplay();
     }
 
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Content)]
@@ -69,7 +75,7 @@ public class LabzComboBox : UserControl
     public object? DataSource
     {
         get => _combo.DataSource;
-        set => _combo.DataSource = value;
+        set { _combo.DataSource = value; UpdateSelectionDisplay(); }
     }
 
     [Category("Data")]
@@ -77,7 +83,7 @@ public class LabzComboBox : UserControl
     public string DisplayMember
     {
         get => _combo.DisplayMember;
-        set => _combo.DisplayMember = value;
+        set { _combo.DisplayMember = value; UpdateSelectionDisplay(); }
     }
 
     [Category("Data")]
@@ -117,7 +123,7 @@ public class LabzComboBox : UserControl
     public ComboBoxStyle DropDownStyle
     {
         get => _combo.DropDownStyle;
-        set => _combo.DropDownStyle = value;
+        set { _combo.DropDownStyle = value; UpdateSelectionDisplay(); }
     }
 
     [Category("Behavior")]
@@ -193,11 +199,29 @@ public class LabzComboBox : UserControl
     {
         if (_combo is null || _searchButton is null) return;
         var actionWidth = _showSearchButton ? 36 : 0;
-        _combo.Bounds = new Rectangle(12, Math.Max(2, (Height - _combo.Height) / 2),
-            Math.Max(1, Width - actionWidth - 42), _combo.Height);
+        _combo.Bounds = new Rectangle(10, Math.Max(2, (Height - _combo.Height) / 2),
+            Math.Max(1, Width - actionWidth - 18), _combo.Height);
+        _selectionDisplay.Bounds = new Rectangle(12, 4, Math.Max(1, Width - actionWidth - 48), Math.Max(1, Height - 8));
+        _selectionDisplay.BringToFront();
         _arrow.Bounds = new Rectangle(Math.Max(0, Width - actionWidth - 32), 4, 28, Math.Max(1, Height - 8));
         _searchButton.Bounds = new Rectangle(Math.Max(0, Width - 36),
             Math.Max(2, (Height - 30) / 2), 32, 30);
+    }
+
+    private void ToggleDropDown()
+    {
+        if (!Enabled) return;
+        _combo.Focus();
+        _combo.DroppedDown = !_combo.DroppedDown;
+        Invalidate();
+    }
+
+    private void UpdateSelectionDisplay()
+    {
+        if (_combo is null || _selectionDisplay is null) return;
+        _selectionDisplay.Visible = _combo.DropDownStyle == ComboBoxStyle.DropDownList;
+        _selectionDisplay.Text = _combo.GetItemText(_combo.SelectedItem);
+        _selectionDisplay.Invalidate();
     }
 
     protected override void OnPaint(PaintEventArgs e)
@@ -220,6 +244,7 @@ public class LabzComboBox : UserControl
         BackColor = theme.Surface;
         _arrow.BackColor = theme.Surface;
         _arrow.ForeColor = theme.Foreground;
+        _selectionDisplay.ForeColor = theme.Foreground;
         _combo.BackColor = theme.Surface;
         _combo.ForeColor = theme.Foreground;
         _combo.Invalidate();
