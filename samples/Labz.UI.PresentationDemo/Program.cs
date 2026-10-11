@@ -18,6 +18,8 @@ internal static class Program
         services.AddTransient<TradeDetailsControl>();
         services.AddSingleton<ScreenFactory>();
         services.AddTransient<DeferredTradePresenter>();
+        services.AddTransient<PositionForm>();
+        services.AddTransient<PositionPresenter>();
         services.AddSingleton<DeferredScreenFactory>();
         services.AddTransient<ScreenNavigator>();
         using var provider = services.BuildServiceProvider(validateScopes: true);
