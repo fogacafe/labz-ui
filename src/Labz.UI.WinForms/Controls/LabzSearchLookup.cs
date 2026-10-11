@@ -9,8 +9,25 @@ namespace Labz.UI.WinForms.Controls;
 [DefaultEvent(nameof(SelectionChanged))]
 public class LabzSearchLookup : UserControl
 {
+    // DataGridView consumes Escape internally when a row/cell is current.
+    // Handle it before the grid's default key processing.
+    private sealed class LookupResultsGrid : DataGridView
+    {
+        public Action? EscapeRequested { get; set; }
+
+        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+        {
+            if (keyData == Keys.Escape)
+            {
+                EscapeRequested?.Invoke();
+                return true;
+            }
+            return base.ProcessCmdKey(ref msg, keyData);
+        }
+    }
+
     private readonly TextBox _query = new() { BorderStyle = BorderStyle.None, PlaceholderText = "Search..." };
-    private readonly DataGridView _results = new()
+    private readonly LookupResultsGrid _results = new()
     {
         ReadOnly = true, MultiSelect = false, AllowUserToAddRows = false,
         AllowUserToDeleteRows = false, AllowUserToResizeRows = false,
@@ -46,6 +63,7 @@ public class LabzSearchLookup : UserControl
         _query.MouseEnter += (_, _) => { _hovered = true; Invalidate(); };
         _query.MouseLeave += (_, _) => { _hovered = false; Invalidate(); };
         _results.AccessibleName = "Lookup results";
+        _results.EscapeRequested = () => { _popup.Close(); _query.Focus(); };
         _timer.Interval = _debounceMilliseconds;
         _outsideClickMonitor.Tick += (_, _) => CheckPopupDismissal();
         _timer.Tick += (_, _) => { _timer.Stop(); _ = SearchOnEventAsync(); };
