@@ -9,6 +9,7 @@ public class LabzAppShell : UserControl
     private readonly Panel _activityBar = new() { Dock = DockStyle.Left, Width = 58, Padding = new Padding(4, 10, 4, 4) };
     private readonly Panel _sidebar = new() { Dock = DockStyle.Left, Width = 232, AutoScroll = true, Padding = new Padding(8) };
     private readonly Panel _content = new() { Dock = DockStyle.Fill };
+    private readonly Panel _sidebarDivider = new() { Dock = DockStyle.Right, Width = 1 };
     private readonly LabzStatusBar _statusBar = new() { Dock = DockStyle.Bottom };
     private readonly FlowLayoutPanel _moduleButtons = new()
     {
@@ -41,6 +42,7 @@ public class LabzAppShell : UserControl
         Controls.Add(_activityBar);
         _activityBar.Controls.Add(_moduleButtons);
         _sidebar.Controls.Add(_pageButtons);
+        _sidebar.Controls.Add(_sidebarDivider);
         _sidebar.Controls.Add(_moduleTitle);
         _moduleButtons.SizeChanged += (_, _) => UpdateButtonWidths(_moduleButtons, 44);
         _pageButtons.SizeChanged += (_, _) => UpdateButtonWidths(_pageButtons, 190);
@@ -159,7 +161,7 @@ public class LabzAppShell : UserControl
         var module = _modules.FirstOrDefault(m => string.Equals(m.Id, id, StringComparison.OrdinalIgnoreCase));
         if (module is null) return false;
         _selectedModuleId = module.Id;
-        _moduleTitle.Text = module.Title;
+        _moduleTitle.Text = "  " + module.Title;
         BuildSidebar(module);
         UpdateActivitySelection();
         SelectedModuleChanged?.Invoke(this, EventArgs.Empty);
@@ -219,7 +221,8 @@ public class LabzAppShell : UserControl
                 var header = new Label
                 {
                     Text = group.Key.ToUpperInvariant(), Height = 30, Width = 190,
-                    Padding = new Padding(8, 8, 0, 0), AutoEllipsis = true
+                    Padding = new Padding(12, 8, 0, 0), AutoEllipsis = true,
+                    Font = new Font(Font.FontFamily, Math.Max(8f, Font.Size - 1f), FontStyle.Bold)
                 };
                 _pageButtons.Controls.Add(header);
                 foreach (var page in group)
@@ -227,7 +230,8 @@ public class LabzAppShell : UserControl
                     var button = CreateButton(page.Title, 190);
                     button.Height = 36;
                     button.TextAlign = ContentAlignment.MiddleLeft;
-                    button.Padding = new Padding(12, 0, 0, 0);
+                    button.Padding = new Padding(16, 0, 0, 0);
+                    button.AccessibleName = module.Title + " / " + page.Title;
                     button.Click += (_, _) => RequestPage(module, page);
                     _pageButtons.Controls.Add(button);
                 }
@@ -265,6 +269,7 @@ public class LabzAppShell : UserControl
         BackColor = theme.Background;
         _content.BackColor = theme.Background;
         _sidebar.BackColor = theme.Surface;
+        _sidebarDivider.BackColor = ControlPaint.Dark(theme.Surface, 0.08f);
         _activityBar.BackColor = theme.Background;
         _moduleButtons.BackColor = theme.Background;
         _pageButtons.BackColor = theme.Surface;
@@ -274,12 +279,18 @@ public class LabzAppShell : UserControl
         {
             button.ForeColor = theme.Foreground;
             button.FlatAppearance.BorderSize = 0;
+            button.FlatAppearance.MouseOverBackColor = ControlPaint.Light(theme.Surface, 0.08f);
         }
         foreach (Control control in _pageButtons.Controls)
         {
             control.ForeColor = theme.Foreground;
             control.BackColor = theme.Surface;
-            if (control is Button button) button.FlatAppearance.BorderSize = 0;
+            if (control is Button button)
+            {
+                button.FlatAppearance.BorderSize = 0;
+                button.FlatAppearance.MouseOverBackColor = ControlPaint.Light(theme.Surface, 0.08f);
+                button.FlatAppearance.MouseDownBackColor = ControlPaint.Light(theme.Surface, 0.15f);
+            }
         }
         UpdateActivitySelection();
         Invalidate(true);

@@ -9,7 +9,7 @@ public class LabzTabWorkspace : UserControl
 {
     private readonly FlowLayoutPanel _tabStrip = new()
     {
-        Dock = DockStyle.Top, Height = 42, WrapContents = false, AutoScroll = true,
+        Dock = DockStyle.Top, Height = 40, WrapContents = false, AutoScroll = true,
         FlowDirection = FlowDirection.LeftToRight, Padding = new Padding(4, 3, 4, 3)
     };
     private readonly Panel _host = new() { Dock = DockStyle.Fill };
@@ -63,16 +63,17 @@ public class LabzTabWorkspace : UserControl
         if (content.IsDisposed || content.Parent is not null)
             throw new ArgumentException("Page content must be a new unparented control.", nameof(createContent));
 
-        var tab = new Panel { Width = 168, Height = 34, Margin = new Padding(2, 0, 2, 0) };
+        var tab = new Panel { Width = 180, Height = 32, Margin = new Padding(2, 0, 2, 0) };
         var select = new Button
         {
             Dock = DockStyle.Fill, Text = title, FlatStyle = FlatStyle.Flat,
             TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true,
+            Padding = new Padding(10, 0, 0, 0),
             AccessibleName = title, UseVisualStyleBackColor = false
         };
         var close = new Button
         {
-            Dock = DockStyle.Right, Width = 30, Text = "×",
+            Dock = DockStyle.Right, Width = 28, Text = "×",
             FlatStyle = FlatStyle.Flat, AccessibleName = "Close " + title,
             UseVisualStyleBackColor = false
         };
@@ -231,6 +232,7 @@ public class LabzTabWorkspace : UserControl
                 button.BackColor = page.Tab.BackColor;
                 button.ForeColor = theme.Foreground;
                 button.FlatAppearance.BorderSize = 0;
+                button.FlatAppearance.MouseOverBackColor = ControlPaint.Light(theme.Surface, 0.10f);
             }
         }
         Invalidate(true);
