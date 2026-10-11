@@ -9,7 +9,7 @@ using var subscription = bus.Subscribe<TradeSelected>(e => ShowTrade(e.TradeId))
 bus.Publish(new TradeSelected(1024));
 ```
 
-Register `IScreenEventBus` as scoped and resolve it from the same screen scope. The current `ScreenFactory` does not yet register the event bus automatically; the hosting integration is a subsequent step.
+Register `IScreenEventBus` as scoped and resolve it from the same screen scope. The presentation demo registers the bus as scoped and injects it into two sibling UserControls. Each Form gets its own instance through ScreenFactory. Production registration/hosting helpers remain a subsequent step.
 
 - Subscriptions return an idempotent `IDisposable`.
 - Publication is synchronous and invokes subscribers in subscription order on the calling thread.
