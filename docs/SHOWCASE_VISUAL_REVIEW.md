@@ -21,3 +21,25 @@ Use the **Switch theme** button to review light and dark variants. Test the Trad
 For each issue, send a screenshot with the section name, light/dark mode, display scaling, expected appearance, and what looks wrong. We can fix groups of related issues in one PR.
 
 **Release gate:** Windows visual inspection and keyboard/accessibility checks remain manual. Green CI confirms build/tests, not pixel-level visual quality.
+
+## Visual Polish Sprint — final release gate
+
+The three integrated packages are: #87 (selection and lookup), #88 (tabs and content surfaces), #89 (Showcase review). The first two packages include known native WinForms visual limitations; do not call them resolved without reviewing them on Windows.
+
+### Reviewer sign-off matrix
+
+| Area | Light | Dark | 125% DPI | 150% DPI | Keyboard |
+| --- | --- | --- | --- | --- | --- |
+| ComboBox and SearchLookup popup | [ ] | [ ] | [ ] | [ ] | [ ] |
+| DatePicker calendar (native limitation) | [ ] | [ ] | [ ] | [ ] | [ ] |
+| NumericInput spinner (native limitation) | [ ] | [ ] | [ ] | [ ] | [ ] |
+| Tabs and tab workspace | [ ] | [ ] | [ ] | [ ] | [ ] |
+| Card and EmptyState (no clipping) | [ ] | [ ] | [ ] | [ ] | [ ] |
+| Showcase gallery and header | [ ] | [ ] | [ ] | [ ] | [ ] |
+| Trading Desk and DataGrid demos | [ ] | [ ] | [ ] | [ ] | [ ] |
+
+Capture screenshots of any mismatch, including Windows version, theme, display scaling, and section title. Also verify popup opening near screen edges, resizing, Tab/Ctrl+Tab, Esc/Enter, and disabled controls.
+
+### Release decision
+
+**Candidate only; not a published release.** A green build is necessary but insufficient. Do not publish or tag a stable package until the Windows visual sign-off above and any remaining accessibility issues are resolved. Native DatePicker and NumericInput chrome may require dedicated replacements or documented exceptions.
