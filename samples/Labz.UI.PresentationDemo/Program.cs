@@ -78,6 +78,10 @@ internal sealed class TradeForm : Form
         var indicator = new ScreenLoadingIndicator();
         indicator.Bind(loading);
         Controls.Add(indicator);
+        var overlay = new ScreenLoadingOverlay();
+        overlay.Bind(loading);
+        Controls.Add(overlay);
+        overlay.BringToFront();
     }
 }
 
