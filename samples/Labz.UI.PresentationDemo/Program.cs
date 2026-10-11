@@ -16,8 +16,10 @@ internal static class Program
         services.AddTransient<TradeSelectorControl>();
         services.AddTransient<TradeDetailsControl>();
         services.AddSingleton<ScreenFactory>();
+        services.AddTransient<DeferredTradePresenter>();
+        services.AddSingleton<DeferredScreenFactory>();
         using var provider = services.BuildServiceProvider(validateScopes: true);
-        Application.Run(new DemoShell(provider.GetRequiredService<ScreenFactory>()));
+        Application.Run(new DemoShell(provider.GetRequiredService<ScreenFactory>(), provider.GetRequiredService<DeferredScreenFactory>()));
     }
 }
 
@@ -89,7 +91,7 @@ internal sealed class DemoShell : Form
     private readonly TabControl _tabs = new() { Dock = DockStyle.Fill };
     private int _opened;
 
-    public DemoShell(ScreenFactory factory)
+    public DemoShell(ScreenFactory factory, DeferredScreenFactory deferredFactory)
     {
         _factory = factory;
         Text = "Labz UI — independent Form scopes";
@@ -98,10 +100,13 @@ internal sealed class DemoShell : Form
         var toolbar = new FlowLayoutPanel { Dock = DockStyle.Top, Height = 48 };
         var open = new Button { Text = "Open trade editor", AutoSize = true };
         var close = new Button { Text = "Close selected tab", AutoSize = true };
+        var deferred = new Button { Text = "Deferred loading demo", AutoSize = true };
+        deferred.Click += (_, _) => new DeferredDemoShell(deferredFactory).Show(this);
         open.Click += (_, _) => OpenTrade();
         close.Click += (_, _) => CloseSelected();
         toolbar.Controls.Add(open);
         toolbar.Controls.Add(close);
+        toolbar.Controls.Add(deferred);
         Controls.Add(_tabs);
         Controls.Add(toolbar);
         OpenTrade();
