@@ -35,6 +35,7 @@ internal sealed class DeferredDemoShell : Form
     public DeferredDemoShell(ScreenNavigator navigator)
     {
         _host = new ScreenWorkspace(navigator, _tabs);
+        _host.CanCloseAsync = ConfirmCloseAsync;
         Text = "Labz UI — navigator and tab host";
         Width = 900;
         Height = 580;
@@ -96,6 +97,28 @@ internal sealed class DeferredDemoShell : Form
         if (screen.View.IsDisposed || !_titles.ContainsKey(screen)) return;
         foreach (TabPage page in _tabs.TabPages)
             if (page.Controls.Contains(screen.View)) { page.Text = status; break; }
+    }
+
+    private ValueTask<bool> ConfirmCloseAsync(object screen, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (screen is not DeferredScreenInstance<TradeForm> trade ||
+            trade.View.IsDisposed || string.IsNullOrWhiteSpace(trade.View.Notes.Text))
+            return ValueTask.FromResult(true);
+
+        var choice = MessageBox.Show(this,
+            "This trade has unsaved notes. Save before closing?",
+            "Unsaved changes", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Warning);
+
+        if (choice == DialogResult.Cancel)
+            return ValueTask.FromResult(false);
+        if (choice == DialogResult.Yes)
+        {
+            // Demo only: emulate a successful save. Real apps must await persistence
+            // and return false if it fails.
+            trade.View.Notes.Clear();
+        }
+        return ValueTask.FromResult(true);
     }
 
     private async void OnClosing(object? sender, FormClosingEventArgs e)
