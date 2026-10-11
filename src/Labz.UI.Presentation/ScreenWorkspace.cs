@@ -12,7 +12,11 @@ public sealed class ScreenWorkspace : IAsyncDisposable
     private readonly ScreenNavigator _navigator;
     private readonly Dictionary<object, (TabPage Page, Func<ValueTask> Close)> _screens = new();
     private readonly HashSet<Task> _closing = new();
+    private readonly HashSet<object> _closePending = new();
     private bool _disposed;
+
+    /// <summary>Optional per-screen close approval. Return false to keep the tab open.</summary>
+    public Func<object, CancellationToken, ValueTask<bool>>? CanCloseAsync { get; set; }
 
     public ScreenWorkspace(ScreenNavigator navigator, TabControl tabs)
     {
@@ -76,22 +80,29 @@ public sealed class ScreenWorkspace : IAsyncDisposable
         return false;
     }
 
-    public Task<bool> CloseSelectedAsync()
+    public Task<bool> CloseSelectedAsync(CancellationToken cancellationToken = default)
     {
         var entry = _screens.FirstOrDefault(x => ReferenceEquals(x.Value.Page, _tabs.SelectedTab));
-        return entry.Key is null ? Task.FromResult(false) : CloseAsync(entry.Key);
+        return entry.Key is null ? Task.FromResult(false) : CloseAsync(entry.Key, cancellationToken);
     }
 
-    public async Task<bool> CloseAsync(object screen)
+    public async Task<bool> CloseAsync(object screen, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(screen);
-        if (!_screens.Remove(screen, out var entry)) return false;
-        _tabs.TabPages.Remove(entry.Page);
-        var closing = CloseCoreAsync(entry);
-        _closing.Add(closing);
-        try { await closing; }
-        finally { _closing.Remove(closing); }
-        return true;
+        if (!_screens.ContainsKey(screen) || !_closePending.Add(screen)) return false;
+        try
+        {
+            if (CanCloseAsync is { } guard && !await guard(screen, cancellationToken)) return false;
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!_screens.Remove(screen, out var entry)) return false;
+            _tabs.TabPages.Remove(entry.Page);
+            var closing = CloseCoreAsync(entry);
+            _closing.Add(closing);
+            try { await closing; }
+            finally { _closing.Remove(closing); }
+            return true;
+        }
+        finally { _closePending.Remove(screen); }
     }
 
     private static async Task CloseCoreAsync((TabPage Page, Func<ValueTask> Close) entry)
@@ -104,8 +115,16 @@ public sealed class ScreenWorkspace : IAsyncDisposable
     {
         if (_disposed) return;
         _disposed = true;
+        // Disposal is forced: callers should request guarded close before shutdown.
         foreach (var screen in _screens.Keys.ToArray())
-            await CloseAsync(screen);
+        {
+            if (!_screens.Remove(screen, out var entry)) continue;
+            _tabs.TabPages.Remove(entry.Page);
+            var closing = CloseCoreAsync(entry);
+            _closing.Add(closing);
+            try { await closing; }
+            finally { _closing.Remove(closing); }
+        }
         await Task.WhenAll(_closing.ToArray());
     }
 }
