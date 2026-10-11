@@ -10,7 +10,6 @@ namespace Labz.UI.WinForms.Controls;
 public class LabzSearchLookup : UserControl
 {
     private readonly TextBox _query = new() { BorderStyle = BorderStyle.None, PlaceholderText = "Search..." };
-    private readonly Button _search = new() { Text = "⌕", AccessibleName = "Search", TabStop = true, FlatStyle = FlatStyle.Flat, Cursor = Cursors.Hand };
     private readonly DataGridView _results = new()
     {
         ReadOnly = true, MultiSelect = false, AllowUserToAddRows = false,
@@ -42,7 +41,6 @@ public class LabzSearchLookup : UserControl
         _query.Leave += (_, _) => Invalidate();
         _query.MouseEnter += (_, _) => { _hovered = true; Invalidate(); };
         _query.MouseLeave += (_, _) => { _hovered = false; Invalidate(); };
-        _search.FlatAppearance.BorderSize = 0;
         _results.AccessibleName = "Lookup results";
         _timer.Interval = _debounceMilliseconds;
         _timer.Tick += (_, _) => { _timer.Stop(); _ = SearchOnEventAsync(); };
@@ -67,7 +65,6 @@ public class LabzSearchLookup : UserControl
             }
             if (e.KeyCode == Keys.Escape) _popup.Close();
         };
-        _search.Click += (_, _) => _ = SearchOnEventAsync();
         _results.CellDoubleClick += (_, e) => SelectRow(e.RowIndex);
         _results.KeyDown += (_, e) =>
         {
@@ -90,8 +87,8 @@ public class LabzSearchLookup : UserControl
             Margin = Padding.Empty,
             Padding = Padding.Empty
         });
-        Controls.AddRange([_query, _search]);
-        Size = new Size(360, 36);
+        Controls.Add(_query);
+        Size = new Size(360, 42);
         UiThemeManager.ThemeChanged += OnThemeChanged;
         ApplyTheme();
         LayoutChildren();
@@ -264,11 +261,11 @@ public class LabzSearchLookup : UserControl
 
     private void LayoutChildren()
     {
-        if (_query is null || _search is null || _results is null) return;
-        _query.Bounds = new Rectangle(12, Math.Max(2, (Height - _query.PreferredHeight) / 2), Math.Max(1, Width - 60), _query.PreferredHeight);
-        _search.Bounds = new Rectangle(Math.Max(0, Width - 40), 4, 32, Math.Max(1, Height - 8));
-        _popupPanel.Width = Math.Max(Width, 260);
+        if (_query is null || _results is null) return;
+        _query.Bounds = new Rectangle(12, Math.Max(3, (Height - _query.PreferredHeight) / 2), Math.Max(1, Width - 60), _query.PreferredHeight);
+        _popupPanel.Width = Math.Max(1, Width);
         _popup.Items[0].Size = _popupPanel.Size;
+        _popup.Size = _popupPanel.Size;
     }
 
     protected override void OnSizeChanged(EventArgs e)
@@ -313,18 +310,31 @@ public class LabzSearchLookup : UserControl
         using var border = new Pen(_query.Focused ? theme.Primary : _hovered ? ControlPaint.Dark(theme.Border) : theme.Border, _query.Focused ? 2 : 1);
         e.Graphics.FillPath(fill, path);
         e.Graphics.DrawPath(border, path);
+        var centerX = Width - 23;
+        var centerY = Height / 2 - 2;
+        using var glyph = new Pen(Enabled ? theme.Foreground : theme.Border, 1.6f)
+        { StartCap = LineCap.Round, EndCap = LineCap.Round };
+        e.Graphics.DrawEllipse(glyph, centerX - 5, centerY - 5, 9, 9);
+        e.Graphics.DrawLine(glyph, centerX + 2, centerY + 2, centerX + 7, centerY + 7);
+    }
+
+    protected override void OnMouseClick(MouseEventArgs e)
+    {
+        base.OnMouseClick(e);
+        if (Enabled && e.Button == MouseButtons.Left && e.X >= Width - 48)
+            _ = SearchOnEventAsync();
+        else if (Enabled && e.Button == MouseButtons.Left)
+            _query.Focus();
     }
 
     private void ApplyTheme()
     {
-        if (_query is null || _search is null || _results is null) return;
+        if (_query is null || _results is null) return;
         var theme = UiThemeManager.Current;
         BackColor = theme.Surface;
-        _search.FlatAppearance.BorderColor = theme.Border;
         _query.BackColor = theme.Surface;
         _query.ForeColor = theme.Foreground;
-        _search.BackColor = theme.Surface;
-        _search.ForeColor = theme.Foreground;
+        _popup.BackColor = theme.Surface;
         _popupPanel.BackColor = theme.Surface;
         _status.BackColor = theme.Surface;
         _status.ForeColor = theme.Foreground;
@@ -348,6 +358,7 @@ public class LabzSearchLookup : UserControl
         _results.AlternatingRowsDefaultCellStyle.SelectionForeColor = Color.White;
         _results.ColumnHeadersDefaultCellStyle.BackColor = theme.Surface;
         _results.ColumnHeadersDefaultCellStyle.ForeColor = theme.Foreground;
+        _results.ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.None;
         _results.Invalidate();
     }
 
