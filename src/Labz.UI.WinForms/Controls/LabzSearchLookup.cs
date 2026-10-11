@@ -7,8 +7,8 @@ namespace Labz.UI.WinForms.Controls;
 [DefaultEvent(nameof(SelectionChanged))]
 public class LabzSearchLookup : UserControl
 {
-    private readonly TextBox _query = new() { BorderStyle = BorderStyle.FixedSingle, PlaceholderText = "Search..." };
-    private readonly Button _search = new() { Text = "⌕", AccessibleName = "Search", TabStop = true };
+    private readonly TextBox _query = new() { BorderStyle = BorderStyle.None, PlaceholderText = "Search..." };
+    private readonly Button _search = new() { Text = "⌕", AccessibleName = "Search", TabStop = true, FlatStyle = FlatStyle.Flat, Cursor = Cursors.Hand };
     private readonly DataGridView _results = new()
     {
         ReadOnly = true, MultiSelect = false, AllowUserToAddRows = false,
@@ -34,6 +34,7 @@ public class LabzSearchLookup : UserControl
     public LabzSearchLookup()
     {
         _query.AccessibleName = "Lookup search";
+        _search.FlatAppearance.BorderSize = 0;
         _results.AccessibleName = "Lookup results";
         _timer.Interval = _debounceMilliseconds;
         _timer.Tick += (_, _) => { _timer.Stop(); _ = SearchOnEventAsync(); };
@@ -256,8 +257,8 @@ public class LabzSearchLookup : UserControl
     private void LayoutChildren()
     {
         if (_query is null || _search is null || _results is null) return;
-        _query.Bounds = new Rectangle(0, 0, Math.Max(1, Width - 40), 32);
-        _search.Bounds = new Rectangle(Math.Max(0, Width - 38), 0, 38, 32);
+        _query.Bounds = new Rectangle(9, Math.Max(2, (Height - _query.PreferredHeight) / 2), Math.Max(1, Width - 53), _query.PreferredHeight);
+        _search.Bounds = new Rectangle(Math.Max(0, Width - 37), 1, 36, Math.Max(1, Height - 2));
         _popupPanel.Width = Math.Max(Width, 260);
         _popup.Items[0].Size = _popupPanel.Size;
     }
@@ -297,7 +298,8 @@ public class LabzSearchLookup : UserControl
     {
         if (_query is null || _search is null || _results is null) return;
         var theme = UiThemeManager.Current;
-        BackColor = theme.Background;
+        BackColor = theme.Surface;
+        _search.FlatAppearance.BorderColor = theme.Border;
         _query.BackColor = theme.Surface;
         _query.ForeColor = theme.Foreground;
         _search.BackColor = theme.Surface;
