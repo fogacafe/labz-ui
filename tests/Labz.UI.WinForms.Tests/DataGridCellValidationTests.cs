@@ -18,6 +18,12 @@ public class DataGridCellValidationTests
         Assert.True(grid.ClearCellValidation(0, 0));
         Assert.False(grid.ClearCellValidation(0, 0));
         grid.SetCellValidation(0, 0, LabzDataGrid.CellValidationSeverity.Warning, "Check value");
+        grid.SetRowValidation(0, LabzDataGrid.CellValidationSeverity.Error, "Revalidate entire trade");
+        Assert.True(grid.ClearRowValidation(0));
+        Assert.False(grid.ClearRowValidation(0));
+        grid.SetRowValidation(0, LabzDataGrid.CellValidationSeverity.Warning, "Review trade");
+        grid.ClearRowValidations();
+        Assert.False(grid.ClearRowValidation(0));
         grid.ClearCellValidations();
         Assert.False(grid.ClearCellValidation(0, 0));
     });
@@ -29,6 +35,8 @@ public class DataGridCellValidationTests
         grid.Columns.Add("Ticket", "Ticket");
         Assert.Throws<ArgumentOutOfRangeException>(() =>
             grid.SetCellValidation(0, 0, LabzDataGrid.CellValidationSeverity.Error, "Invalid"));
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            grid.SetRowValidation(0, LabzDataGrid.CellValidationSeverity.Error, "Invalid"));
     });
 
     private static void RunSta(Action action)
