@@ -96,7 +96,7 @@ public sealed class ShowcaseForm : Form
         while (gallery.RowCount <= row)
         {
             gallery.RowCount++;
-            gallery.RowStyles.Add(new RowStyle(SizeType.Absolute, 260));
+            gallery.RowStyles.Add(new RowStyle(SizeType.Absolute, 300));
         }
         var card = new LabzGroupBox
         {
