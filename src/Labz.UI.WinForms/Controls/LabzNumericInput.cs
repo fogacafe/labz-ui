@@ -34,8 +34,8 @@ public class LabzNumericInput : NumericUpDown
         }
     }
 
-    [Category("Appearance")]
-    [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
+    [Browsable(false)]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public CultureInfo Culture
     {
         get => _culture;
@@ -44,6 +44,14 @@ public class LabzNumericInput : NumericUpDown
             _culture = value ?? throw new ArgumentNullException(nameof(value));
             UpdateEditText();
         }
+    }
+
+    [Category("Appearance")]
+    [DefaultValue("")]
+    public string CultureName
+    {
+        get => _culture.Name == CultureInfo.CurrentCulture.Name ? "" : _culture.Name;
+        set => Culture = string.IsNullOrWhiteSpace(value) ? CultureInfo.CurrentCulture : CultureInfo.GetCultureInfo(value);
     }
 
     /// <summary>For percent format, 25 means 25%, not 0.25.</summary>
