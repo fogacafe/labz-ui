@@ -48,7 +48,10 @@ public sealed class ShowcaseForm : Form
         openDemo.Location = new Point(24, 72);
         openDemo.Click += (_, _) => { using var demo = new TradingDeskDemoForm(); demo.ShowDialog(this); };
         header.Height = 118;
-        header.Controls.AddRange([heading, _subtitle, _theme, openDemo]);
+        var openGridDemo = new LabzButton { Text = "Open DataGrid v1", Width = 190, Height = 36 };
+        openGridDemo.Location = new Point(246, 72);
+        openGridDemo.Click += (_, _) => { using var demo = new DataGridDemoForm(); demo.ShowDialog(this); };
+        header.Controls.AddRange([heading, _subtitle, _theme, openDemo, openGridDemo]);
         Controls.Add(header);
         _theme.Click += (_, _) => UiThemeManager.Apply(
             ReferenceEquals(UiThemeManager.Current, UiTheme.Light) ? UiTheme.Dark : UiTheme.Light);
