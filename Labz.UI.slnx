@@ -1,12 +1,14 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/Labz.UI.Core/Labz.UI.Core.csproj" />
+    <Project Path="src/Labz.UI.Presentation/Labz.UI.Presentation.csproj" />
     <Project Path="src/Labz.UI.Rendering/Labz.UI.Rendering.csproj" />
     <Project Path="src/Labz.UI.WinForms/Labz.UI.WinForms.csproj" />
     <Project Path="src/Labz.UI.Validation/Labz.UI.Validation.csproj" />
   </Folder>
   <Folder Name="/samples/">
     <Project Path="samples/Labz.UI.Showcase/Labz.UI.Showcase.csproj" />
+    <Project Path="samples/Labz.UI.PresentationDemo/Labz.UI.PresentationDemo.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Labz.UI.Core.Tests/Labz.UI.Core.Tests.csproj" />
