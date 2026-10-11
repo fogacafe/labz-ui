@@ -69,6 +69,40 @@ public class LabzDataGrid : DataGridView
         menu.Show(this, position);
     }
 
+    /// <summary>Finds the next matching loaded cell, wrapping around the current row.</summary>
+    /// <remarks>Searches only currently available cell values; virtual data providers should implement server-side search.</remarks>
+    public bool TryFindNext(string? text, bool matchCase = false)
+    {
+        if (VirtualMode || string.IsNullOrWhiteSpace(text) || RowCount == 0 || ColumnCount == 0)
+            return false;
+
+        var comparison = matchCase ? StringComparison.CurrentCulture : StringComparison.CurrentCultureIgnoreCase;
+        var startRow = CurrentCell?.RowIndex ?? -1;
+        var startColumn = CurrentCell?.ColumnIndex ?? -1;
+        var total = (long)RowCount * ColumnCount;
+        var start = startRow < 0 ? -1L : (long)startRow * ColumnCount + startColumn;
+
+        for (long offset = 1; offset <= total; offset++)
+        {
+            var index = (start + offset) % total;
+            var rowIndex = (int)(index / ColumnCount);
+            var columnIndex = (int)(index % ColumnCount);
+            var column = Columns[columnIndex];
+            if (!column.Visible || !Rows[rowIndex].Visible) continue;
+            var cell = Rows[rowIndex].Cells[columnIndex];
+            var display = cell.FormattedValue?.ToString();
+            if (display is null || display.IndexOf(text, comparison) < 0) continue;
+            ClearSelection();
+            CurrentCell = cell;
+            cell.Selected = true;
+            if (IsHandleCreated)
+                FirstDisplayedScrollingRowIndex = rowIndex;
+            return true;
+        }
+
+        return false;
+    }
+
     /// <summary>Exports column order, visibility and widths as portable JSON.</summary>
     public string ExportColumnLayout()
     {
