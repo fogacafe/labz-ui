@@ -240,6 +240,7 @@ public class LabzComboBox : UserControl
         var anchor = PointToScreen(Point.Empty);
         var x = Math.Clamp(anchor.X, screen.Left, Math.Max(screen.Left, screen.Right - size.Width));
         var y = anchor.Y + Height + size.Height <= screen.Bottom ? anchor.Y + Height : Math.Max(screen.Top, anchor.Y - size.Height);
+        AttachPopupOwner();
         _popup.Show(new Point(x, y));
         _list.Focus();
         Invalidate();
@@ -343,10 +344,61 @@ public class LabzComboBox : UserControl
         else ApplyTheme();
     }
 
+    private Form? _popupOwner;
+
+    private void AttachPopupOwner()
+    {
+        var owner = FindForm();
+        if (ReferenceEquals(owner, _popupOwner)) return;
+        DetachPopupOwner();
+        _popupOwner = owner;
+        if (owner is null) return;
+        owner.Deactivate += OnOwnerDeactivated;
+        owner.Resize += OnOwnerResized;
+        owner.VisibleChanged += OnOwnerVisibilityChanged;
+        owner.FormClosed += OnOwnerClosed;
+    }
+
+    private void DetachPopupOwner()
+    {
+        if (_popupOwner is null) return;
+        _popupOwner.Deactivate -= OnOwnerDeactivated;
+        _popupOwner.Resize -= OnOwnerResized;
+        _popupOwner.VisibleChanged -= OnOwnerVisibilityChanged;
+        _popupOwner.FormClosed -= OnOwnerClosed;
+        _popupOwner = null;
+    }
+
+    private void OnOwnerDeactivated(object? sender, EventArgs e) => _popup.Close();
+    private void OnOwnerResized(object? sender, EventArgs e)
+    {
+        if (_popupOwner?.WindowState == FormWindowState.Minimized) _popup.Close();
+    }
+    private void OnOwnerVisibilityChanged(object? sender, EventArgs e)
+    {
+        if (_popupOwner?.Visible != true) _popup.Close();
+    }
+    private void OnOwnerClosed(object? sender, FormClosedEventArgs e) => _popup.Close();
+
+    protected override void OnVisibleChanged(EventArgs e)
+    {
+        base.OnVisibleChanged(e);
+        if (!Visible) _popup.Close();
+    }
+
+    protected override void OnParentChanged(EventArgs e)
+    {
+        base.OnParentChanged(e);
+        if (_popup is null) return;
+        _popup.Close();
+        AttachPopupOwner();
+    }
+
     protected override void Dispose(bool disposing)
     {
         if (disposing)
         {
+            DetachPopupOwner();
             UiThemeManager.ThemeChanged -= OnThemeChanged;
             _popup.Close();
             _popup.Dispose();
