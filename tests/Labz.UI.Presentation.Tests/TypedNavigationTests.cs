@@ -24,6 +24,7 @@ public sealed class TypedNavigationTests
 
     private sealed class ParameterForm : Form
     {
+        [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
         public int TradeId { get; set; }
     }
 
