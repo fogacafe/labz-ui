@@ -21,8 +21,11 @@ public class LabzComboBox : UserControl
         {
             DropDownStyle = ComboBoxStyle.DropDownList,
             IntegralHeight = false,
+            DrawMode = DrawMode.OwnerDrawFixed,
+            ItemHeight = 25,
             Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top
         };
+        _combo.DrawItem += DrawComboItem;
         _combo.SelectedIndexChanged += (_, e) => SelectedIndexChanged?.Invoke(this, e);
         _combo.TextChanged += (_, _) => OnTextChanged(EventArgs.Empty);
         _searchButton = new Button
@@ -157,6 +160,22 @@ public class LabzComboBox : UserControl
         if (_searchButton is not null) _searchButton.Enabled = Enabled;
     }
 
+    private void DrawComboItem(object? sender, DrawItemEventArgs e)
+    {
+        if (e.Index < 0 || e.Index >= _combo.Items.Count) return;
+        var theme = UiThemeManager.Current;
+        var selected = (e.State & DrawItemState.Selected) != 0;
+        var background = selected ? theme.Primary : theme.Surface;
+        var foreground = selected ? Color.White : theme.Foreground;
+        using var brush = new SolidBrush(background);
+        e.Graphics.FillRectangle(brush, e.Bounds);
+        var label = _combo.GetItemText(_combo.Items[e.Index]);
+        TextRenderer.DrawText(e.Graphics, label, e.Font ?? Font,
+            new Rectangle(e.Bounds.X + 8, e.Bounds.Y, Math.Max(0, e.Bounds.Width - 12), e.Bounds.Height),
+            foreground, TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+        if ((e.State & DrawItemState.Focus) != 0) e.DrawFocusRectangle();
+    }
+
     private void LayoutChildren()
     {
         if (_combo is null || _searchButton is null) return;
@@ -174,6 +193,7 @@ public class LabzComboBox : UserControl
         BackColor = theme.Surface;
         _combo.BackColor = theme.Surface;
         _combo.ForeColor = theme.Foreground;
+        _combo.Invalidate();
         _searchButton.BackColor = theme.Surface;
         _searchButton.ForeColor = theme.Foreground;
         Invalidate();
@@ -181,8 +201,13 @@ public class LabzComboBox : UserControl
 
     private void OnThemeChanged(object? sender, EventArgs e)
     {
-        if (IsDisposed || !IsHandleCreated) return;
-        if (InvokeRequired) BeginInvoke((Action)ApplyTheme);
+        if (IsDisposed || Disposing) return;
+        if (InvokeRequired)
+        {
+            if (!IsHandleCreated) return;
+            try { BeginInvoke((Action)ApplyTheme); }
+            catch (InvalidOperationException) { /* Handle is closing. */ }
+        }
         else ApplyTheme();
     }
 
