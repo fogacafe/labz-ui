@@ -73,7 +73,7 @@ public class LabzDataGrid : DataGridView
     /// <remarks>Searches only currently available cell values; virtual data providers should implement server-side search.</remarks>
     public bool TryFindNext(string? text, bool matchCase = false)
     {
-        if (string.IsNullOrWhiteSpace(text) || RowCount == 0 || ColumnCount == 0)
+        if (VirtualMode || string.IsNullOrWhiteSpace(text) || RowCount == 0 || ColumnCount == 0)
             return false;
 
         var comparison = matchCase ? StringComparison.CurrentCulture : StringComparison.CurrentCultureIgnoreCase;
@@ -91,11 +91,11 @@ public class LabzDataGrid : DataGridView
             if (!column.Visible || !Rows[rowIndex].Visible) continue;
             var cell = Rows[rowIndex].Cells[columnIndex];
             var display = cell.FormattedValue?.ToString();
-            if (display?.IndexOf(text, comparison) < 0) continue;
+            if (display is null || display.IndexOf(text, comparison) < 0) continue;
             ClearSelection();
             CurrentCell = cell;
             cell.Selected = true;
-            if (rowIndex >= 0 && rowIndex < RowCount)
+            if (IsHandleCreated)
                 FirstDisplayedScrollingRowIndex = rowIndex;
             return true;
         }
