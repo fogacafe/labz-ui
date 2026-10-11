@@ -29,7 +29,8 @@ public class AdvancedInputsTests
             using var input = new LabzDatePicker { ShowTime = true };
             Assert.True(input.ShowTime);
             input.ShowTime = false;
-            Assert.Equal(DateTimePickerFormat.Short, input.Format);
+            Assert.Equal(DateTimePickerFormat.Custom, input.Format);
+            Assert.Equal(CultureInfo.CurrentCulture.DateTimeFormat.ShortDatePattern, input.CustomFormat);
         });
     }
 
