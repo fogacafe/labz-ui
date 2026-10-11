@@ -73,7 +73,45 @@ public sealed class ScreenLifecycleIntegrationTests
         });
     }
 
-    private static ServiceProvider BuildServices(Action onDisposed)
+    [Fact]
+    public async Task Initialization_failure_is_observable_and_close_still_disposes_scope()
+    {
+        await RunStaAsync(async () =>
+        {
+            var disposed = 0;
+            using var services = BuildServices(() => disposed++, configure: x =>
+                x.AddTransient<FailingInitializationPresenter>());
+            using var tabs = new TabControl();
+            var host = new ScreenWorkspace(services.GetRequiredService<ScreenNavigator>(), tabs);
+            var screen = host.Open<TestScreen, FailingInitializationPresenter>("Failing");
+            await Assert.ThrowsAsync<InvalidOperationException>(() => screen.Initialization);
+            Assert.True(await host.CloseAsync(screen));
+            Assert.True(screen.View.IsDisposed);
+            Assert.Equal(1, disposed);
+            await host.DisposeAsync();
+        });
+    }
+
+    [Fact]
+    public async Task Close_failure_still_disposes_view_and_scoped_services()
+    {
+        await RunStaAsync(async () =>
+        {
+            var disposed = 0;
+            using var services = BuildServices(() => disposed++, configure: x =>
+                x.AddTransient<FailingClosePresenter>());
+            using var tabs = new TabControl();
+            var host = new ScreenWorkspace(services.GetRequiredService<ScreenNavigator>(), tabs);
+            var screen = host.Open<TestScreen, FailingClosePresenter>("Failing close");
+            await Assert.ThrowsAsync<InvalidOperationException>(() => host.CloseAsync(screen));
+            Assert.True(screen.View.IsDisposed);
+            Assert.Equal(1, disposed);
+            Assert.Equal(0, tabs.TabCount);
+            await host.DisposeAsync();
+        });
+    }
+
+    private static ServiceProvider BuildServices(Action onDisposed, Action<ServiceCollection>? configure = null)
     {
         var services = new ServiceCollection();
         services.AddScoped(_ => new TrackedState(onDisposed));
@@ -81,6 +119,7 @@ public sealed class ScreenLifecycleIntegrationTests
         services.AddTransient<TestPresenter>();
         services.AddSingleton<DeferredScreenFactory>();
         services.AddTransient<ScreenNavigator>();
+        configure?.Invoke(services);
         return services.BuildServiceProvider(validateScopes: true);
     }
 
@@ -127,4 +166,20 @@ public sealed class ScreenLifecycleIntegrationTests
             Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
         public Task CloseAsync(CancellationToken cancellationToken) => Task.CompletedTask;
     }
+    private sealed class FailingInitializationPresenter : IAsyncScreenPresenter<TestScreen>
+    {
+        public void Attach(TestScreen view) { }
+        public Task InitializeAsync(CancellationToken cancellationToken) =>
+            Task.FromException(new InvalidOperationException("initialization failed"));
+        public Task CloseAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+    }
+
+    private sealed class FailingClosePresenter : IAsyncScreenPresenter<TestScreen>
+    {
+        public void Attach(TestScreen view) { }
+        public Task InitializeAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task CloseAsync(CancellationToken cancellationToken) =>
+            Task.FromException(new InvalidOperationException("close failed"));
+    }
+
 }
