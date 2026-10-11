@@ -24,15 +24,27 @@ internal sealed class PositionForm : Form
 internal sealed class PositionPresenter(ScreenState state, IApplicationEventBus events) : IAsyncScreenPresenter<PositionForm>
 {
     private IDisposable? _subscription;
+    private PositionsRequest? _request;
+    private PositionForm? _view;
+    public void SetParameters(PositionsRequest parameters)
+    {
+        _request = parameters;
+        if (_view is not null) _view.StateLabel.Text = $"Portfolio: {parameters.Portfolio} — scope: {state.InstanceId}";
+    }
     public void Attach(PositionForm view)
     {
+        _view = view;
         view.StateLabel.Text = $"Position scope: {state.InstanceId}";
         _subscription = events.Subscribe<DemoTradeSaved>(e =>
         {
             if (!view.IsDisposed) view.NotificationLabel.Text = $"Trade #{e.TradeId} saved — positions notified";
         });
     }
-    public Task InitializeAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+    public Task InitializeAsync(CancellationToken cancellationToken)
+    {
+        if (_request is null) throw new InvalidOperationException("Positions parameters were not provided.");
+        return Task.CompletedTask;
+    }
     public Task CloseAsync(CancellationToken cancellationToken)
     {
         _subscription?.Dispose();
