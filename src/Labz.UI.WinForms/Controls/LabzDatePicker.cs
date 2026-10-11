@@ -229,15 +229,16 @@ public class LabzDatePicker : UserControl
             label.Bounds = new Rectangle(7 + col * 38, 44, 38, 26);
         }
         var offset = ((int)_visibleMonth.DayOfWeek - (int)firstDay + 7) % 7;
-        var firstCell = _visibleMonth.AddDays(-offset);
+        var firstCell = _visibleMonth.AddDays(-Math.Min(offset, (int)(_visibleMonth - DateTime.MinValue).TotalDays));
         for (var i = 0; i < _days.Length; i++)
         {
-            var day = firstCell.AddDays(i);
+            var available = i <= (DateTime.MaxValue - firstCell).TotalDays;
+            var day = available ? firstCell.AddDays(i) : DateTime.MaxValue;
             var button = _days[i];
             button.Bounds = new Rectangle(7 + (i % 7) * 38, 74 + (i / 7) * 34, 38, 32);
             button.Tag = day;
             button.Text = day.Day.ToString(CultureInfo.CurrentCulture);
-            button.Enabled = day.Date >= MinDate.Date && day.Date <= MaxDate.Date;
+            button.Enabled = available && day.Date >= MinDate.Date && day.Date <= MaxDate.Date;
             button.BackColor = day.Date == Value.Date ? theme.Primary : theme.Surface;
             button.ForeColor = day.Date == Value.Date ? Color.White :
                 day.Month == _visibleMonth.Month ? theme.Foreground : theme.Border;
