@@ -5,7 +5,9 @@ namespace Labz.UI.WinForms.Controls;
 
 /// <summary>Designer-compatible container with CSS-inspired directional layout.</summary>
 [DefaultProperty(nameof(Direction))]
-public class LabzStackPanel : Panel
+[ProvideProperty("FlexGrow", typeof(Control))]
+[ProvideProperty("FlexShrink", typeof(Control))]
+public class LabzStackPanel : Panel, IExtenderProvider
 {
     private LabzDirection _direction = LabzDirection.Vertical;
     private LabzJustifyContent _justifyContent;
@@ -14,6 +16,7 @@ public class LabzStackPanel : Panel
     private bool _wrap;
     private bool _arranging;
     private readonly Dictionary<Control, (double Grow, double Shrink, Size Basis)> _flex = [];
+    private readonly Dictionary<Control, Size> _basis = [];
 
     public LabzStackPanel()
     {
@@ -61,6 +64,20 @@ public class LabzStackPanel : Panel
         set { _wrap = value; PerformLayout(); }
     }
 
+    public bool CanExtend(object extendee) => extendee is Control child && child != this && child.Parent == this;
+
+    [Category("Layout")]
+    [DefaultValue(0d)]
+    public double GetFlexGrow(Control child) => _flex.TryGetValue(child, out var f) ? f.Grow : 0;
+
+    public void SetFlexGrow(Control child, double value) => SetFlex(child, value, GetFlexShrink(child));
+
+    [Category("Layout")]
+    [DefaultValue(1d)]
+    public double GetFlexShrink(Control child) => _flex.TryGetValue(child, out var f) ? f.Shrink : 1;
+
+    public void SetFlexShrink(Control child, double value) => SetFlex(child, GetFlexGrow(child), value);
+
     /// <summary>Sets per-child flex factors; default is grow=0, shrink=1.</summary>
     public void SetFlex(Control child, double grow = 0, double shrink = 1)
     {
@@ -68,7 +85,9 @@ public class LabzStackPanel : Panel
         if (!double.IsFinite(grow) || grow < 0 || !double.IsFinite(shrink) || shrink < 0)
             throw new ArgumentOutOfRangeException(nameof(grow));
         if (child.Parent != this) throw new ArgumentException("Control must belong to this panel.", nameof(child));
-        _flex[child] = (grow, shrink, child.Size);
+        if (!_basis.TryGetValue(child, out var basis))
+            _basis[child] = basis = child.Size;
+        _flex[child] = (grow, shrink, basis);
         PerformLayout();
     }
 
@@ -76,6 +95,7 @@ public class LabzStackPanel : Panel
     {
         base.OnControlRemoved(e);
         _flex.Remove(e.Control);
+        _basis.Remove(e.Control);
     }
 
     protected override void OnLayout(LayoutEventArgs levent)
@@ -88,17 +108,20 @@ public class LabzStackPanel : Panel
             var children = Controls.Cast<Control>().Where(c => c.Visible && !c.IsDisposed).Reverse().ToArray();
             var sizes = children.Select(c =>
             {
-                var basis = _flex.TryGetValue(c, out var factors) ? factors.Basis : c.Size;
+                if (!_basis.TryGetValue(c, out var basis))
+                    _basis[c] = basis = c.Size;
                 return new Size(basis.Width + c.Margin.Horizontal, basis.Height + c.Margin.Vertical);
             }).ToArray();
             var bounds = DisplayRectangle;
-            var rectangles = Wrap
-                ? LabzFlexLayoutEngine.Arrange(sizes, bounds, Direction,
-                    Spacing, true, JustifyContent, AlignItems)
-                : LabzFlexLayoutEngine.ArrangeFlexible(sizes, bounds, Direction,
-                    Spacing, JustifyContent, AlignItems,
-                    children.Select(c => _flex.TryGetValue(c, out var f) ? f.Grow : 0d).ToArray(),
-                    children.Select(c => _flex.TryGetValue(c, out var f) ? f.Shrink : 1d).ToArray());
+            var rectangles = LabzFlexLayoutEngine.ArrangeConstrained(sizes, bounds, Direction,
+                Spacing, Wrap, JustifyContent, AlignItems,
+                children.Select(GetFlexGrow).ToArray(),
+                children.Select(GetFlexShrink).ToArray(),
+                children.Select(c => new Size(c.MinimumSize.Width + c.Margin.Horizontal,
+                    c.MinimumSize.Height + c.Margin.Vertical)).ToArray(),
+                children.Select(c => new Size(
+                    c.MaximumSize.Width == 0 ? 0 : c.MaximumSize.Width + c.Margin.Horizontal,
+                    c.MaximumSize.Height == 0 ? 0 : c.MaximumSize.Height + c.Margin.Vertical)).ToArray());
             SuspendLayout();
             try
             {

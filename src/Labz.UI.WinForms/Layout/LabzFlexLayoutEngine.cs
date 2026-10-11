@@ -10,6 +10,125 @@ public enum LabzAlignItems { Start, Center, End, Stretch }
 /// <summary>Shared deterministic flex-like layout calculations for Labz containers.</summary>
 public static class LabzFlexLayoutEngine
 {
+
+    /// <summary>Flexible wrapped layout with per-item bounds and weighted line sizing.</summary>
+    public static IReadOnlyList<Rectangle> ArrangeConstrained(
+        IReadOnlyList<Size> sizes, Rectangle bounds, LabzDirection direction,
+        int gap, bool wrap, LabzJustifyContent justify, LabzAlignItems align,
+        IReadOnlyList<double> grow, IReadOnlyList<double> shrink,
+        IReadOnlyList<Size> minimum, IReadOnlyList<Size> maximum)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(gap);
+        var count = sizes.Count;
+        if (grow.Count != count || shrink.Count != count ||
+            minimum.Count != count || maximum.Count != count)
+            throw new ArgumentException("All item collections must have matching counts.");
+        if (grow.Any(x => !double.IsFinite(x) || x < 0) ||
+            shrink.Any(x => !double.IsFinite(x) || x < 0))
+            throw new ArgumentOutOfRangeException(nameof(grow), "Weights must be finite and non-negative.");
+        if (count == 0) return [];
+        var horizontal = direction == LabzDirection.Horizontal;
+        int Main(Size s) => horizontal ? s.Width : s.Height;
+        int Cross(Size s) => horizontal ? s.Height : s.Width;
+        var limit = Math.Max(0, horizontal ? bounds.Width : bounds.Height);
+        var crossLimit = Math.Max(0, horizontal ? bounds.Height : bounds.Width);
+        var basis = new double[count];
+        var min = new double[count];
+        var max = new double[count];
+        for (var i = 0; i < count; i++)
+        {
+            min[i] = Math.Max(0, Main(minimum[i]));
+            // Zero maximum means unconstrained, matching WinForms MaximumSize.
+            max[i] = Main(maximum[i]) <= 0 ? double.PositiveInfinity : Math.Max(min[i], Main(maximum[i]));
+            basis[i] = Math.Clamp(Math.Max(0, Main(sizes[i])), min[i], max[i]);
+        }
+        var lines = new List<List<int>>();
+        var current = new List<int>();
+        var used = 0d;
+        for (var i = 0; i < count; i++)
+        {
+            if (wrap && current.Count > 0 && used + gap + basis[i] > limit)
+            {
+                lines.Add(current);
+                current = [];
+                used = 0;
+            }
+            used += (current.Count == 0 ? 0 : gap) + basis[i];
+            current.Add(i);
+        }
+        if (current.Count > 0) lines.Add(current);
+        var result = new Rectangle[count];
+        var crossOffset = 0;
+        foreach (var line in lines)
+        {
+            var allocated = line.Select(i => basis[i]).ToArray();
+            var free = limit - gap * (line.Count - 1) - allocated.Sum();
+            // Redistribute after each item reaches its min/max constraint.
+            for (var iteration = 0; iteration < line.Count && Math.Abs(free) > 0.001; iteration++)
+            {
+                var expanding = free > 0;
+                var weights = line.Select((i, j) => expanding
+                    ? (allocated[j] < max[i] - 0.001 ? grow[i] : 0)
+                    : (allocated[j] > min[i] + 0.001 ? shrink[i] * basis[i] : 0)).ToArray();
+                var total = weights.Sum();
+                if (total <= 0) break;
+                var distributed = 0d;
+                for (var j = 0; j < line.Count; j++)
+                {
+                    var i = line[j];
+                    var delta = free * weights[j] / total;
+                    var next = Math.Clamp(allocated[j] + delta, min[i], max[i]);
+                    distributed += next - allocated[j];
+                    allocated[j] = next;
+                }
+                free -= distributed;
+                if (Math.Abs(distributed) < 0.001) break;
+            }
+            var leftover = Math.Max(0, limit - gap * (line.Count - 1) - allocated.Sum());
+            var start = justify switch
+            {
+                LabzJustifyContent.Center => leftover / 2,
+                LabzJustifyContent.End => leftover,
+                LabzJustifyContent.SpaceAround => leftover / (2 * line.Count),
+                LabzJustifyContent.SpaceEvenly => leftover / (line.Count + 1),
+                _ => 0d
+            };
+            var spacing = justify switch
+            {
+                LabzJustifyContent.SpaceBetween when line.Count > 1 => gap + leftover / (line.Count - 1),
+                LabzJustifyContent.SpaceAround => gap + leftover / line.Count,
+                LabzJustifyContent.SpaceEvenly => gap + leftover / (line.Count + 1),
+                _ => (double)gap
+            };
+            var lineCross = wrap ? line.Max(i => Math.Max(0, Cross(sizes[i]))) : crossLimit;
+            for (var j = 0; j < line.Count; j++)
+            {
+                var i = line[j];
+                var cross = Math.Max(0, Cross(sizes[i]));
+                if (align == LabzAlignItems.Stretch)
+                {
+                    var maxCross = Cross(maximum[i]);
+                    cross = Math.Clamp(lineCross, Math.Max(0, Cross(minimum[i])),
+                        maxCross <= 0 ? int.MaxValue : Math.Max(Cross(minimum[i]), maxCross));
+                }
+                var crossPosition = align switch
+                {
+                    LabzAlignItems.Center => (lineCross - cross) / 2,
+                    LabzAlignItems.End => lineCross - cross,
+                    _ => 0
+                };
+                var p0 = (int)Math.Round(start);
+                var p1 = (int)Math.Round(start + allocated[j]);
+                result[i] = horizontal
+                    ? new Rectangle(bounds.X + p0, bounds.Y + crossOffset + crossPosition, Math.Max(0, p1 - p0), cross)
+                    : new Rectangle(bounds.X + crossOffset + crossPosition, bounds.Y + p0, cross, Math.Max(0, p1 - p0));
+                start += allocated[j] + spacing;
+            }
+            crossOffset += lineCross + gap;
+        }
+        return result;
+    }
+
     /// <summary>Arranges one flex line using weighted growth and shrinkage.</summary>
     /// <remarks>For wrapped layouts, callers should arrange each line separately.</remarks>
     public static IReadOnlyList<Rectangle> ArrangeFlexible(
