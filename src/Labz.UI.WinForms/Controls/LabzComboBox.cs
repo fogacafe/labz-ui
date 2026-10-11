@@ -35,6 +35,7 @@ public class LabzComboBox : UserControl
         _combo.DrawItem += DrawComboItem;
         _combo.Visible = false;
         _list.DrawItem += DrawListItem;
+        _popup.BackColor = UiThemeManager.Current.Surface;
         _list.Click += (_, _) => CommitSelection();
         _list.KeyDown += (_, e) => { if (e.KeyCode == Keys.Enter) { CommitSelection(); e.Handled = true; } else if (e.KeyCode == Keys.Escape) { _popup.Close(); Focus(); e.Handled = true; } };
         _popup.Items.Add(new ToolStripControlHost(_list) { AutoSize = false, Margin = Padding.Empty, Padding = Padding.Empty });
@@ -312,6 +313,7 @@ public class LabzComboBox : UserControl
         _combo.BackColor = theme.Surface;
         _combo.ForeColor = theme.Foreground;
         _combo.Invalidate();
+        _popup.BackColor = theme.Surface;
         _list.BackColor = theme.Surface;
         _list.ForeColor = theme.Foreground;
         _list.Invalidate();
