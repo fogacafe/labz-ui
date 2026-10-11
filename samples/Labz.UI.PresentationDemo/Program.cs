@@ -4,7 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Labz.UI.PresentationDemo;
 
-internal static class Program
+public static class Program
 {
     [STAThread]
     private static void Main()
