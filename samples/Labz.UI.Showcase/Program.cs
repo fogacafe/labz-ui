@@ -23,6 +23,7 @@ public sealed class ShowcaseForm : Form
 {
     private readonly Panel _page = new() { Dock = DockStyle.Fill, AutoScroll = true };
     private readonly Label _subtitle = new() { AutoSize = true };
+    private readonly Label _reviewInfo = new() { AutoSize = true };
     private readonly LabzButton _theme = new() { Text = "Switch theme", Width = 160 };
     private readonly LabzProgressBar _progress = new() { Value = 65, ShowPercentage = true, Width = 260 };
     private readonly LabzLabel _status = new() { Text = "Ready", Variant = LabzLabelVariant.Muted };
@@ -40,6 +41,8 @@ public sealed class ShowcaseForm : Form
         var header = new Panel { Dock = DockStyle.Top, Height = 105, Padding = new Padding(24, 16, 24, 10) };
         var heading = new LabzLabel { Text = "Labz UI", Variant = LabzLabelVariant.Heading, Location = new Point(24, 12) };
         _subtitle.Text = "WinForms controls • interactive component gallery";
+        _reviewInfo.Text = "Visual review • use section names in screenshots";
+        _reviewInfo.Location = new Point(26, 100);
         _subtitle.Location = new Point(26, 52);
         _theme.Anchor = AnchorStyles.Top | AnchorStyles.Right;
         _theme.Location = new Point(Width - 220, 25);
@@ -47,11 +50,11 @@ public sealed class ShowcaseForm : Form
         var openDemo = new LabzButton { Text = "Open Trading Desk Demo", Width = 210, Height = 36 };
         openDemo.Location = new Point(24, 72);
         openDemo.Click += (_, _) => { using var demo = new TradingDeskDemoForm(); demo.ShowDialog(this); };
-        header.Height = 118;
+        header.Height = 142;
         var openGridDemo = new LabzButton { Text = "Open DataGrid v1", Width = 190, Height = 36 };
         openGridDemo.Location = new Point(246, 72);
         openGridDemo.Click += (_, _) => { using var demo = new DataGridDemoForm(); demo.ShowDialog(this); };
-        header.Controls.AddRange([heading, _subtitle, _theme, openDemo, openGridDemo]);
+        header.Controls.AddRange([heading, _subtitle, _reviewInfo, _theme, openDemo, openGridDemo]);
         Controls.Add(header);
         _theme.Click += (_, _) => UiThemeManager.Apply(
             ReferenceEquals(UiThemeManager.Current, UiTheme.Light) ? UiTheme.Dark : UiTheme.Light);
@@ -403,6 +406,7 @@ public sealed class ShowcaseForm : Form
         ForeColor = theme.Foreground;
         _page.BackColor = theme.Background;
         _subtitle.ForeColor = theme.Foreground;
+        _reviewInfo.ForeColor = theme.Foreground;
         Invalidate(true);
     }
 
