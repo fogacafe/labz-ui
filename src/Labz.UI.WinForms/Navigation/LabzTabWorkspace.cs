@@ -15,6 +15,7 @@ public class LabzTabWorkspace : UserControl
     private readonly Panel _host = new() { Dock = DockStyle.Fill };
     private readonly Dictionary<string, WorkspacePage> _pages = new(StringComparer.OrdinalIgnoreCase);
     private string? _activePageId;
+    private bool _keyboardShortcutsEnabled = true;
 
     public LabzTabWorkspace()
     {
@@ -31,6 +32,14 @@ public class LabzTabWorkspace : UserControl
     [Browsable(false)]
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public IReadOnlyCollection<string> OpenPageIds => _pages.Keys.ToArray();
+
+    [Category("Behavior")]
+    [DefaultValue(true)]
+    public bool KeyboardShortcutsEnabled
+    {
+        get => _keyboardShortcutsEnabled;
+        set => _keyboardShortcutsEnabled = value;
+    }
 
     public event EventHandler<LabzWorkspacePageEventArgs>? ActivePageChanged;
     public event EventHandler<LabzWorkspacePageEventArgs>? PageClosed;
@@ -94,6 +103,35 @@ public class LabzTabWorkspace : UserControl
         ApplyTheme();
         ActivePageChanged?.Invoke(this, new LabzWorkspacePageEventArgs(page.Id, page.Title));
         return true;
+    }
+
+    /// <summary>Activates the next or previous open tab, wrapping at either end.</summary>
+    public bool ActivateAdjacent(int direction)
+    {
+        if (_pages.Count == 0 || direction == 0) return false;
+        var keys = _pages.Keys.ToArray();
+        var current = Array.FindIndex(keys, key => string.Equals(key, _activePageId, StringComparison.OrdinalIgnoreCase));
+        var next = current < 0 ? 0 : (current + (direction > 0 ? 1 : -1) + keys.Length) % keys.Length;
+        return Activate(keys[next]);
+    }
+
+    /// <summary>Handles standard tab shortcuts; call from a host Form.KeyDown if needed.</summary>
+    public bool HandleWorkspaceShortcut(Keys keyData)
+    {
+        if (!KeyboardShortcutsEnabled) return false;
+        return keyData switch
+        {
+            Keys.Control | Keys.Tab => ActivateAdjacent(1),
+            Keys.Control | Keys.Shift | Keys.Tab => ActivateAdjacent(-1),
+            Keys.Control | Keys.W => _activePageId is not null && Close(_activePageId),
+            _ => false
+        };
+    }
+
+    protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+    {
+        if (HandleWorkspaceShortcut(keyData)) return true;
+        return base.ProcessCmdKey(ref msg, keyData);
     }
 
     public bool Close(string id)
