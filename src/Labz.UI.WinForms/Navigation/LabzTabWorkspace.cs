@@ -139,6 +139,18 @@ public class LabzTabWorkspace : UserControl
         return base.ProcessCmdKey(ref msg, keyData);
     }
 
+    /// <summary>Checks whether all open pages allow closing without disposing any.</summary>
+    public bool CanCloseAll()
+    {
+        foreach (var page in _pages.Values.ToArray())
+        {
+            var args = new LabzWorkspacePageClosingEventArgs(page.Id, page.Title);
+            PageClosing?.Invoke(this, args);
+            if (args.Cancel) return false;
+        }
+        return true;
+    }
+
     /// <summary>Preflights every close guard, then closes all pages as one UI operation.</summary>
     public bool TryCloseAll()
     {
