@@ -31,6 +31,7 @@ public class LabzSearchLookup : UserControl
     private LabzLookupItem? _selectedItem;
     private int _maxResults = 10;
     private bool _settingSelection;
+    private bool _highlightFirstOnResults;
 
     private int _debounceMilliseconds = 350;
 
@@ -49,6 +50,7 @@ public class LabzSearchLookup : UserControl
         {
             if (_settingSelection) return;
             _selectedItem = null;
+            _highlightFirstOnResults = false;
             CancelPending();
             _timer.Stop();
             _popup.Close();
@@ -223,6 +225,7 @@ public class LabzSearchLookup : UserControl
     {
         if (_results is null) return;
         _results.Columns.Clear();
+        _results.ColumnHeadersVisible = _columns.Count > 0;
         if (_columns.Count == 0)
         {
             _results.Columns.Add("Display", "Result");
@@ -250,6 +253,12 @@ public class LabzSearchLookup : UserControl
         {
             _status.Visible = false;
             _results.Visible = true;
+            if (_highlightFirstOnResults && _results.Rows.Count > 0 && _results.Columns.Count > 0)
+            {
+                _results.CurrentCell = _results.Rows[0].Cells[0];
+                _results.Rows[0].Selected = true;
+            }
+            _highlightFirstOnResults = false;
             OpenPopup();
         }
     }
@@ -340,6 +349,7 @@ public class LabzSearchLookup : UserControl
         if (Enabled && e.Button == MouseButtons.Left && e.X >= Width - 48)
         {
             _query.Focus();
+            _highlightFirstOnResults = true;
             _ = SearchOnEventAsync();
         }
         else if (Enabled && e.Button == MouseButtons.Left)
@@ -375,8 +385,9 @@ public class LabzSearchLookup : UserControl
         _results.AlternatingRowsDefaultCellStyle.ForeColor = theme.Foreground;
         _results.AlternatingRowsDefaultCellStyle.SelectionBackColor = theme.Primary;
         _results.AlternatingRowsDefaultCellStyle.SelectionForeColor = Color.White;
-        _results.ColumnHeadersDefaultCellStyle.BackColor = theme.Surface;
+        _results.ColumnHeadersDefaultCellStyle.BackColor = theme.Background;
         _results.ColumnHeadersDefaultCellStyle.ForeColor = theme.Foreground;
+        _results.ColumnHeadersDefaultCellStyle.Font = new Font(Font, FontStyle.Bold);
         _results.ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.None;
         _results.DefaultCellStyle.Padding = new Padding(8, 0, 4, 0);
         _results.AlternatingRowsDefaultCellStyle.SelectionBackColor = theme.Primary;
