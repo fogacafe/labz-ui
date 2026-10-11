@@ -68,6 +68,7 @@ public class LabzDataGrid : DataGridView
         if (!_groupRows.ContainsKey(key)) return false;
         _groupExpanded[key] = expanded;
         ApplyGroupVisibility();
+        GroupsChanged?.Invoke(this, EventArgs.Empty);
         return true;
     }
 
