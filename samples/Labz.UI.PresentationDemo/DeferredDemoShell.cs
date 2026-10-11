@@ -26,93 +26,67 @@ internal sealed class DeferredTradePresenter(IScreenLoadingManager loading) : IA
 
 internal sealed class DeferredDemoShell : Form
 {
-    private readonly DeferredScreenFactory _factory;
     private readonly TabControl _tabs = new() { Dock = DockStyle.Fill };
-    private readonly Dictionary<TabPage, DeferredScreenInstance<TradeForm>> _screens = new();
-    private readonly HashSet<Task> _closing = new();
+    private readonly ScreenTabHost<TradeForm, DeferredTradePresenter> _host;
+    private readonly Dictionary<DeferredScreenInstance<TradeForm>, string> _titles = new();
     private int _opened;
     private bool _shuttingDown;
 
-    public DeferredDemoShell(DeferredScreenFactory factory)
+    public DeferredDemoShell(ScreenNavigator navigator)
     {
-        _factory = factory;
-        Text = "Labz UI — deferred initialization";
+        _host = new ScreenTabHost<TradeForm, DeferredTradePresenter>(navigator, _tabs);
+        Text = "Labz UI — navigator and tab host";
         Width = 900;
         Height = 580;
         var toolbar = new FlowLayoutPanel { Dock = DockStyle.Top, Height = 46 };
-        var open = new Button { Text = "Open loading trade", AutoSize = true };
+        var open = new Button { Text = "New independent trade", AutoSize = true };
+        var keyed = new Button { Text = "Open/reuse trade #1024", AutoSize = true };
         var close = new Button { Text = "Close selected", AutoSize = true };
-        open.Click += (_, _) => OpenTrade();
-        close.Click += async (_, _) => await CloseSelectedAsync();
+        open.Click += (_, _) => OpenTrade(ScreenOpenPolicy.NewInstance);
+        keyed.Click += (_, _) => OpenTrade(ScreenOpenPolicy.ReuseByKey);
+        close.Click += async (_, _) => await _host.CloseSelectedAsync();
         toolbar.Controls.Add(open);
+        toolbar.Controls.Add(keyed);
         toolbar.Controls.Add(close);
         Controls.Add(_tabs);
         Controls.Add(toolbar);
         FormClosing += OnClosing;
-        OpenTrade();
-        OpenTrade();
+        OpenTrade(ScreenOpenPolicy.NewInstance);
+        OpenTrade(ScreenOpenPolicy.NewInstance);
     }
 
-    private void OpenTrade()
+    private void OpenTrade(ScreenOpenPolicy policy)
     {
         if (_shuttingDown) return;
-        var screen = _factory.Open<TradeForm, DeferredTradePresenter>();
-        var page = new TabPage($"Trade #{++_opened} — loading");
-        _screens.Add(page, screen);
-        screen.View.TopLevel = false;
-        screen.View.FormBorderStyle = FormBorderStyle.None;
-        screen.View.Dock = DockStyle.Fill;
+        var title = policy == ScreenOpenPolicy.ReuseByKey ? "Trade #1024" : $"Trade #{++_opened}";
+        var screen = _host.Open(title + " — loading", policy,
+            policy == ScreenOpenPolicy.ReuseByKey ? "trade:1024" : null);
+        if (!_titles.TryAdd(screen, title)) return; // Existing keyed tab was selected.
         screen.View.InstanceLabel.Text = "Loading trade data…";
-        page.Controls.Add(screen.View);
-        _tabs.TabPages.Add(page);
-        screen.View.Show();
-        _tabs.SelectedTab = page;
-        _ = ObserveInitializationAsync(page, screen);
+        _ = ObserveInitializationAsync(screen, title);
     }
 
-    private async Task ObserveInitializationAsync(TabPage page, DeferredScreenInstance<TradeForm> screen)
+    private async Task ObserveInitializationAsync(DeferredScreenInstance<TradeForm> screen, string title)
     {
         try
         {
             await screen.Initialization;
-            if (!page.IsDisposed && _screens.ContainsKey(page))
-                page.Text = page.Text.Replace(" — loading", " — ready");
+            SetStatus(screen, title + " — ready");
         }
-        catch (OperationCanceledException)
-        {
-            // Closing the tab intentionally cancels its initialization.
-        }
+        catch (OperationCanceledException) { /* Expected on close. */ }
         catch (Exception ex)
         {
-            if (!page.IsDisposed && _screens.ContainsKey(page))
-            {
-                page.Text = page.Text.Replace(" — loading", " — failed");
+            SetStatus(screen, title + " — failed");
+            if (!screen.View.IsDisposed)
                 screen.View.InstanceLabel.Text = $"Loading failed: {ex.Message}";
-            }
         }
     }
 
-    private async Task CloseSelectedAsync()
+    private void SetStatus(DeferredScreenInstance<TradeForm> screen, string status)
     {
-        if (_tabs.SelectedTab is { } page)
-            await ClosePageAsync(page);
-    }
-
-    private async Task ClosePageAsync(TabPage page)
-    {
-        if (!_screens.Remove(page, out var screen)) return;
-        _tabs.TabPages.Remove(page);
-        var close = CloseAndDisposeAsync(screen, page);
-        _closing.Add(close);
-        try { await close; }
-        finally { _closing.Remove(close); }
-    }
-
-    private static async Task CloseAndDisposeAsync(
-        DeferredScreenInstance<TradeForm> screen, TabPage page)
-    {
-        try { await screen.DisposeAsync(); }
-        finally { page.Dispose(); }
+        if (screen.View.IsDisposed || !_titles.ContainsKey(screen)) return;
+        foreach (TabPage page in _tabs.TabPages)
+            if (page.Controls.Contains(screen.View)) { page.Text = status; break; }
     }
 
     private async void OnClosing(object? sender, FormClosingEventArgs e)
@@ -121,12 +95,7 @@ internal sealed class DeferredDemoShell : Form
         e.Cancel = true;
         _shuttingDown = true;
         Enabled = false;
-        try
-        {
-            foreach (var page in _screens.Keys.ToArray())
-                await ClosePageAsync(page);
-            await Task.WhenAll(_closing.ToArray());
-        }
+        try { await _host.DisposeAsync(); }
         finally
         {
             FormClosing -= OnClosing;
