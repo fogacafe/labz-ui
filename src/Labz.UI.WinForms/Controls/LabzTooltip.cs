@@ -24,12 +24,14 @@ public class LabzTooltip : Component, IExtenderProvider
 
     public void SetLabzToolTip(Control control, string text) => _tooltip.SetToolTip(control, text);
 
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
     public int AutoPopDelay
     {
         get => _tooltip.AutoPopDelay;
         set => _tooltip.AutoPopDelay = value;
     }
 
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
     public int InitialDelay
     {
         get => _tooltip.InitialDelay;
