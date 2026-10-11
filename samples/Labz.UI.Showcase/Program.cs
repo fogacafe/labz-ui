@@ -59,6 +59,7 @@ public sealed class ShowcaseForm : Form
 
         AddCard(gallery, "Buttons", CreateButtons());
         AddCard(gallery, "Navigation", CreateNavigation());
+        AddCard(gallery, "Advanced inputs", CreateAdvancedInputs());
         AddCard(gallery, "Dialogs", CreateDialogs());
         AddCard(gallery, "Toast notifications", CreateToasts());
         AddCard(gallery, "Text & validation", CreateTextInputs());
@@ -90,6 +91,18 @@ public sealed class ShowcaseForm : Form
         content.Dock = DockStyle.Fill;
         card.Controls.Add(content);
         gallery.Controls.Add(card, col, row);
+    }
+
+    private static Control CreateAdvancedInputs()
+    {
+        var panel = Stack();
+        panel.Controls.AddRange([
+            new LabzDatePicker { Width = 270 },
+            new LabzDatePicker { Width = 270, ShowTime = true },
+            new LabzNumericInput { Width = 270, NumericFormat = LabzNumericFormat.Currency, Value = 1234.56m },
+            new LabzNumericInput { Width = 270, NumericFormat = LabzNumericFormat.Percent, Value = 12.5m }
+        ]);
+        return panel;
     }
 
     private Control CreateNavigation()
