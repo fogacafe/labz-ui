@@ -121,6 +121,11 @@ public sealed class ShowcaseForm : Form
         var funds = new LabzModule("funds", "Funds", "F");
         funds.Pages.Add(new LabzNavigationPage("positions", "Positions", "Queries"));
         shell.SetModules([bonds, funds]);
+        shell.StatusBar.UserName = "Alex";
+        shell.StatusBar.TenantName = "Trading Desk";
+        shell.StatusBar.EnvironmentName = "DEV";
+        shell.StatusBar.TenantRequested += (_, _) => shell.StatusBar.TenantName = "Research";
+        shell.StatusBar.UserRequested += (_, _) => MessageBox.Show("User profile requested");
         shell.ConnectWorkspace(new LabzTabWorkspace(), (moduleId, pageId) =>
             new LabzLabel { Text = moduleId + " / " + pageId, Dock = DockStyle.Top });
         return shell;

@@ -9,6 +9,7 @@ public class LabzAppShell : UserControl
     private readonly Panel _activityBar = new() { Dock = DockStyle.Left, Width = 58, Padding = new Padding(4, 10, 4, 4) };
     private readonly Panel _sidebar = new() { Dock = DockStyle.Left, Width = 232, AutoScroll = true, Padding = new Padding(8) };
     private readonly Panel _content = new() { Dock = DockStyle.Fill };
+    private readonly LabzStatusBar _statusBar = new() { Dock = DockStyle.Bottom };
     private readonly FlowLayoutPanel _moduleButtons = new()
     {
         Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, WrapContents = false,
@@ -34,6 +35,7 @@ public class LabzAppShell : UserControl
     public LabzAppShell()
     {
         Controls.Add(_content);
+        Controls.Add(_statusBar);
         Controls.Add(_sidebar);
         Controls.Add(_activityBar);
         _activityBar.Controls.Add(_moduleButtons);
@@ -69,6 +71,10 @@ public class LabzAppShell : UserControl
     [Browsable(false)]
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public LabzTabWorkspace? Workspace => _workspace;
+
+    [Browsable(false)]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public LabzStatusBar StatusBar => _statusBar;
 
     /// <summary>Connects navigation to persistent tabs; the factory is called only for new tabs.</summary>
     public void ConnectWorkspace(LabzTabWorkspace workspace, Func<string, string, Control> pageFactory)
