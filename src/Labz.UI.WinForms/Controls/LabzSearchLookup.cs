@@ -31,6 +31,7 @@ public class LabzSearchLookup : UserControl
     private LabzLookupItem? _selectedItem;
     private int _maxResults = 10;
     private bool _settingSelection;
+    private bool _popupOpenedForTyping;
     private int _debounceMilliseconds = 350;
 
     public LabzSearchLookup()
@@ -58,14 +59,18 @@ public class LabzSearchLookup : UserControl
             if (e.KeyCode == Keys.Enter) { e.SuppressKeyPress = true; _ = SearchOnEventAsync(); }
             if (e.KeyCode == Keys.Down && _popup.Visible && _results.Rows.Count > 0)
             {
+                _popupOpenedForTyping = false;
                 _results.Focus();
-                if (_results.CurrentCell is null) _results.CurrentCell = _results.Rows[0].Cells[0];
+                var first = _results.Rows.Cast<DataGridViewRow>().FirstOrDefault(r => r.Visible);
+                if (first is not null && _results.Columns.Count > 0)
+                    _results.CurrentCell = first.Cells[0];
                 e.Handled = true;
                 e.SuppressKeyPress = true;
             }
             if (e.KeyCode == Keys.Escape) _popup.Close();
         };
         _results.CellDoubleClick += (_, e) => SelectRow(e.RowIndex);
+        _results.CellClick += (_, e) => { if (e.RowIndex >= 0) SelectRow(e.RowIndex); };
         _results.KeyDown += (_, e) =>
         {
             if (e.KeyCode == Keys.Enter)
@@ -77,6 +82,8 @@ public class LabzSearchLookup : UserControl
             if (e.KeyCode == Keys.Escape) { _popup.Close(); _query.Focus(); }
         };
         _results.Dock = DockStyle.Fill;
+        _results.RowHeadersVisible = false;
+        _results.AllowUserToResizeColumns = false;
         _results.Visible = true;
         _popupPanel.Controls.Add(_results);
         _popupPanel.Controls.Add(_status);
@@ -229,6 +236,7 @@ public class LabzSearchLookup : UserControl
     {
         BuildColumns();
         _results.Rows.Clear();
+        _results.ClearSelection();
         foreach (var item in _items)
         {
             var values = _columns.Count == 0
@@ -236,6 +244,7 @@ public class LabzSearchLookup : UserControl
                 : _columns.Select(column => item.Values.TryGetValue(column.Key, out var value) ? value : null).ToArray();
             _results.Rows.Add(values);
         }
+        _results.ClearSelection();
         if (_items.Count == 0) ShowStatus("No results found.");
         else
         {
@@ -256,6 +265,7 @@ public class LabzSearchLookup : UserControl
         finally { _settingSelection = false; }
         _timer.Stop();
         _popup.Close();
+        _query.Focus();
         SelectionChanged?.Invoke(this, EventArgs.Empty);
     }
 
@@ -296,7 +306,14 @@ public class LabzSearchLookup : UserControl
         var y = below >= popupHeight || below >= above
             ? Math.Min(anchor.Y + Height, screen.Bottom - popupHeight)
             : Math.Max(screen.Top, anchor.Y - popupHeight);
-        if (!_popup.Visible) _popup.Show(new Point(x, Math.Max(screen.Top, y)));
+        if (!_popup.Visible)
+        {
+            var keepTyping = _query.Focused;
+            _popup.AutoClose = !keepTyping;
+            _popupOpenedForTyping = keepTyping;
+            _popup.Show(new Point(x, Math.Max(screen.Top, y)));
+            if (keepTyping) _query.Focus();
+        }
     }
 
     protected override void OnPaint(PaintEventArgs e)
@@ -340,7 +357,7 @@ public class LabzSearchLookup : UserControl
         _status.ForeColor = theme.Foreground;
         _results.BackgroundColor = theme.Surface;
         _results.BorderStyle = BorderStyle.None;
-        _results.CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal;
+        _results.CellBorderStyle = DataGridViewCellBorderStyle.None;
         _results.EnableHeadersVisualStyles = false;
         _results.RowTemplate.Height = 28;
         _results.GridColor = theme.Border;
@@ -352,13 +369,15 @@ public class LabzSearchLookup : UserControl
         _results.DefaultCellStyle.SelectionForeColor = Color.White;
         _results.RowsDefaultCellStyle.SelectionBackColor = theme.Primary;
         _results.RowsDefaultCellStyle.SelectionForeColor = Color.White;
-        _results.AlternatingRowsDefaultCellStyle.BackColor = theme.Background;
+        _results.AlternatingRowsDefaultCellStyle.BackColor = theme.Surface;
         _results.AlternatingRowsDefaultCellStyle.ForeColor = theme.Foreground;
         _results.AlternatingRowsDefaultCellStyle.SelectionBackColor = theme.Primary;
         _results.AlternatingRowsDefaultCellStyle.SelectionForeColor = Color.White;
         _results.ColumnHeadersDefaultCellStyle.BackColor = theme.Surface;
         _results.ColumnHeadersDefaultCellStyle.ForeColor = theme.Foreground;
         _results.ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.None;
+        _results.DefaultCellStyle.Padding = new Padding(8, 0, 4, 0);
+        _results.AlternatingRowsDefaultCellStyle.SelectionBackColor = theme.Primary;
         _results.Invalidate();
     }
 
