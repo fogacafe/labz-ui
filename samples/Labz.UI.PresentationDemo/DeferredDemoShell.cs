@@ -89,7 +89,7 @@ internal sealed class DeferredDemoShell : Form
     private void OpenPositions()
     {
         if (_shuttingDown) return;
-        _host.Open<PositionForm, PositionPresenter>("Positions", ScreenOpenPolicy.ReuseByKey, "positions:overview");
+        _host.Open<PositionForm, PositionPresenter, PositionsRequest>("Positions", new PositionsRequest("Demo portfolio"), ScreenOpenPolicy.ReuseByKey, "positions:overview");
     }
 
     private async Task ObserveInitializationAsync(DeferredScreenInstance<TradeForm> screen, string title)
