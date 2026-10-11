@@ -26,6 +26,7 @@ public class LabzDatePicker : UserControl
     private bool _hovered;
     private bool _formatting;
     private Form? _owner;
+    private readonly List<ScrollableControl> _scrollOwners = [];
 
     public LabzDatePicker()
     {
@@ -290,9 +291,20 @@ public class LabzDatePicker : UserControl
         _owner = form;
         if (form is null) return;
         form.Resize += OnOwnerResize;
+        form.Move += OnOwnerMoved;
+        for (Control? ancestor = Parent; ancestor is not null; ancestor = ancestor.Parent)
+        {
+            if (ancestor is ScrollableControl scroll)
+            {
+                scroll.Scroll += OnAncestorScrolled;
+                _scrollOwners.Add(scroll);
+            }
+        }
         form.VisibleChanged += OnOwnerVisibleChanged;
         form.FormClosed += OnOwnerClosed;
     }
+    private void OnOwnerMoved(object? sender, EventArgs e) => _popup.Close();
+    private void OnAncestorScrolled(object? sender, ScrollEventArgs e) => _popup.Close();
     private void OnOwnerResize(object? sender, EventArgs e)
     {
         if (_owner?.WindowState == FormWindowState.Minimized) _popup.Close();
@@ -306,9 +318,17 @@ public class LabzDatePicker : UserControl
     {
         if (_owner is null) return;
         _owner.Resize -= OnOwnerResize;
+        _owner.Move -= OnOwnerMoved;
+        foreach (var scroll in _scrollOwners) scroll.Scroll -= OnAncestorScrolled;
+        _scrollOwners.Clear();
         _owner.VisibleChanged -= OnOwnerVisibleChanged;
         _owner.FormClosed -= OnOwnerClosed;
         _owner = null;
+    }
+    protected override void OnLocationChanged(EventArgs e)
+    {
+        base.OnLocationChanged(e);
+        if (_popup is not null && _popup.Visible) _popup.Close();
     }
     protected override void OnVisibleChanged(EventArgs e)
     {
