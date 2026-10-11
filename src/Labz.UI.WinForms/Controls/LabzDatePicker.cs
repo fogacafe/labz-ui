@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Globalization;
 using Labz.UI.Core.Theming;
 
 namespace Labz.UI.WinForms.Controls;
@@ -6,9 +7,12 @@ namespace Labz.UI.WinForms.Controls;
 /// <summary>Theme-aware native date/time picker with culture-aware formatting.</summary>
 public class LabzDatePicker : DateTimePicker
 {
+    private bool _showTime;
     public LabzDatePicker()
     {
-        Format = DateTimePickerFormat.Short;
+        Format = DateTimePickerFormat.Custom;
+        CustomFormat = CultureInfo.CurrentCulture.DateTimeFormat.ShortDatePattern;
+        Height = 42;
         CalendarForeColor = UiThemeManager.Current.Foreground;
         CalendarMonthBackground = UiThemeManager.Current.Surface;
         ApplyTheme();
@@ -19,11 +23,14 @@ public class LabzDatePicker : DateTimePicker
     [DefaultValue(false)]
     public bool ShowTime
     {
-        get => Format == DateTimePickerFormat.Custom && CustomFormat == "g";
+        get => _showTime;
         set
         {
-            Format = value ? DateTimePickerFormat.Custom : DateTimePickerFormat.Short;
-            if (value) CustomFormat = "g";
+            _showTime = value;
+            Format = DateTimePickerFormat.Custom;
+            CustomFormat = value
+                ? CultureInfo.CurrentCulture.DateTimeFormat.ShortDatePattern + " " + CultureInfo.CurrentCulture.DateTimeFormat.ShortTimePattern
+                : CultureInfo.CurrentCulture.DateTimeFormat.ShortDatePattern;
         }
     }
 
