@@ -1,4 +1,6 @@
 using System.ComponentModel;
+using System.Drawing.Drawing2D;
+using Labz.UI.Rendering.Drawing;
 using Labz.UI.Core.Theming;
 
 namespace Labz.UI.WinForms.Controls;
@@ -14,7 +16,8 @@ public class LabzComboBox : UserControl
     private readonly ComboBox _combo;
     private readonly Button _searchButton;
     private bool _showSearchButton;
-    private readonly Panel _frame = new() { Dock = DockStyle.Fill, Padding = new Padding(1) };
+    private readonly Button _arrow = new() { Text = "▾", FlatStyle = FlatStyle.Flat, TabStop = false, Cursor = Cursors.Hand };
+    private bool _hovered;
 
     public LabzComboBox()
     {
@@ -40,11 +43,17 @@ public class LabzComboBox : UserControl
         };
         _searchButton.FlatAppearance.BorderSize = 0;
         _searchButton.Click += (_, _) => SearchRequested?.Invoke(this, EventArgs.Empty);
+        SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
         _combo.FlatStyle = FlatStyle.Flat;
-        _combo.Dock = DockStyle.None;
-        Controls.Add(_frame);
-        _frame.Controls.Add(_combo);
-        _frame.Controls.Add(_searchButton);
+        _arrow.FlatAppearance.BorderSize = 0;
+        _arrow.Click += (_, _) => { _combo.Focus(); _combo.DroppedDown = !_combo.DroppedDown; };
+        _combo.Enter += (_, _) => Invalidate();
+        _combo.Leave += (_, _) => Invalidate();
+        _combo.MouseEnter += (_, _) => { _hovered = true; Invalidate(); };
+        _combo.MouseLeave += (_, _) => { _hovered = false; Invalidate(); };
+        Controls.Add(_combo);
+        Controls.Add(_arrow);
+        Controls.Add(_searchButton);
         Size = new Size(240, 42);
         UiThemeManager.ThemeChanged += OnThemeChanged;
         ApplyTheme();
@@ -184,18 +193,33 @@ public class LabzComboBox : UserControl
     {
         if (_combo is null || _searchButton is null) return;
         var actionWidth = _showSearchButton ? 36 : 0;
-        _combo.Bounds = new Rectangle(5, Math.Max(2, (Height - _combo.Height) / 2),
-            Math.Max(1, Width - actionWidth - 10), _combo.Height);
+        _combo.Bounds = new Rectangle(12, Math.Max(2, (Height - _combo.Height) / 2),
+            Math.Max(1, Width - actionWidth - 42), _combo.Height);
+        _arrow.Bounds = new Rectangle(Math.Max(0, Width - actionWidth - 32), 4, 28, Math.Max(1, Height - 8));
         _searchButton.Bounds = new Rectangle(Math.Max(0, Width - 36),
             Math.Max(2, (Height - 30) / 2), 32, 30);
+    }
+
+    protected override void OnPaint(PaintEventArgs e)
+    {
+        base.OnPaint(e);
+        var theme = UiThemeManager.Current;
+        e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+        e.Graphics.Clear(Parent?.BackColor ?? theme.Background);
+        using var path = RoundedRectangles.Create(new Rectangle(1, 1, Math.Max(1, Width - 3), Math.Max(1, Height - 3)), theme.CornerRadius);
+        using var fill = new SolidBrush(theme.Surface);
+        using var border = new Pen(_combo.Focused ? theme.Primary : _hovered ? ControlPaint.Dark(theme.Border) : theme.Border, _combo.Focused ? 2 : 1);
+        e.Graphics.FillPath(fill, path);
+        e.Graphics.DrawPath(border, path);
     }
 
     private void ApplyTheme()
     {
         if (_combo is null || _searchButton is null) return;
         var theme = UiThemeManager.Current;
-        BackColor = theme.Border;
-        _frame.BackColor = theme.Surface;
+        BackColor = theme.Surface;
+        _arrow.BackColor = theme.Surface;
+        _arrow.ForeColor = theme.Foreground;
         _combo.BackColor = theme.Surface;
         _combo.ForeColor = theme.Foreground;
         _combo.Invalidate();
