@@ -19,10 +19,6 @@ public class LabzTabs : TabControl
         ApplyTheme();
     }
 
-    [DesignerSerializationVisibility(DesignerSerializationVisibility.Content)]
-    [Category("Data")]
-    public new TabPageCollection TabPages => base.TabPages;
-
     protected override void OnDrawItem(DrawItemEventArgs e)
     {
         if (e.Index < 0 || e.Index >= TabPages.Count) return;
