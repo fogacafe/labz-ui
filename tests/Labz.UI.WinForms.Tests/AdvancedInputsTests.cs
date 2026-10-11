@@ -22,6 +22,28 @@ public class AdvancedInputsTests
     }
 
     [Fact]
+    public void NumericInputUsesCustomChromeAndRespectsBounds()
+    {
+        RunSta(() =>
+        {
+            using var input = new LabzNumericInput
+            {
+                Minimum = -10m,
+                Maximum = 10m,
+                Increment = 2m,
+                Value = 9m
+            };
+            Assert.IsAssignableFrom<UserControl>(input);
+            Assert.DoesNotContain(input.Controls.Cast<Control>(), control => control is NumericUpDown);
+            Assert.Contains(input.Controls.Cast<Control>(), control => control is TextBox);
+            input.UpButton();
+            Assert.Equal(10m, input.Value);
+            input.DownButton();
+            Assert.Equal(8m, input.Value);
+        });
+    }
+
+    [Fact]
     public void DatePickerSupportsDateAndTime()
     {
         RunSta(() =>
