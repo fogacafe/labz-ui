@@ -13,6 +13,7 @@ internal static class Program
         services.AddLabzScreen<TradeForm, TradePresenter>();
         services.AddScoped<ScreenState>();
         services.AddScoped<IScreenEventBus, ScreenEventBus>();
+        services.AddScoped<IScreenLoadingManager, ScreenLoadingManager>();
         services.AddTransient<TradeSelectorControl>();
         services.AddTransient<TradeDetailsControl>();
         services.AddSingleton<ScreenFactory>();
