@@ -62,14 +62,17 @@ public class LabzSearchLookup : UserControl
         _query.KeyDown += (_, e) =>
         {
             if (e.KeyCode == Keys.Enter) { e.SuppressKeyPress = true; _ = SearchOnEventAsync(); }
-            if (e.KeyCode == Keys.Down && _popup.Visible && _results.Rows.Count > 0)
+            if (e.KeyCode == Keys.Down)
             {
-                _results.Focus();
-                var first = _results.Rows.Cast<DataGridViewRow>().FirstOrDefault(r => r.Visible);
-                if (first is not null && _results.Columns.Count > 0)
-                    _results.CurrentCell = first.Cells[0];
                 e.Handled = true;
                 e.SuppressKeyPress = true;
+                if (!_popup.Visible)
+                {
+                    if (_items.Count > 0) OpenPopup();
+                    else if (SearchProvider is not null) _ = SearchOnEventAsync();
+                }
+                if (_popup.Visible && _results.Visible && _results.Rows.Count > 0)
+                    FocusFirstResult();
             }
             if (e.KeyCode == Keys.Escape) _popup.Close();
         };
@@ -84,6 +87,28 @@ public class LabzSearchLookup : UserControl
                 SelectRow(_results.CurrentCell?.RowIndex ?? -1);
             }
             if (e.KeyCode == Keys.Escape) { _popup.Close(); _query.Focus(); e.Handled = true; e.SuppressKeyPress = true; }
+        };
+        _results.KeyPress += (_, e) =>
+        {
+            if (char.IsControl(e.KeyChar)) return;
+            _query.Focus();
+            _query.SelectionStart = _query.TextLength;
+            _query.SelectionLength = 0;
+            _query.SelectedText = e.KeyChar.ToString();
+            e.Handled = true;
+        };
+        _results.KeyDown += (_, e) =>
+        {
+            if (e.KeyCode != Keys.Back) return;
+            _query.Focus();
+            if (_query.SelectionLength == 0 && _query.SelectionStart > 0)
+            {
+                _query.SelectionStart--;
+                _query.SelectionLength = 1;
+            }
+            _query.SelectedText = string.Empty;
+            e.Handled = true;
+            e.SuppressKeyPress = true;
         };
         _results.Dock = DockStyle.Fill;
         _results.RowHeadersVisible = false;
@@ -264,6 +289,16 @@ public class LabzSearchLookup : UserControl
             _highlightFirstOnResults = false;
             OpenPopup();
         }
+    }
+
+    private void FocusFirstResult()
+    {
+        if (_results.Rows.Count == 0 || _results.Columns.Count == 0) return;
+        var first = _results.Rows.Cast<DataGridViewRow>().FirstOrDefault(row => row.Visible);
+        if (first is null) return;
+        _results.Focus();
+        _results.CurrentCell = first.Cells[0];
+        first.Selected = true;
     }
 
     private void SelectRow(int index)
