@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.ComponentModel;
 using Labz.UI.Core.Theming;
 
@@ -9,6 +10,52 @@ public class LabzDataGrid : DataGridView
 {
     private bool _stripedRows = true;
     private Font? _headerFont;
+
+    /// <summary>Allows users to drag column headers to rearrange the display order.</summary>
+    [Category("Behavior")]
+    [DefaultValue(true)]
+    public bool ColumnReorderingEnabled
+    {
+        get => AllowUserToOrderColumns;
+        set => AllowUserToOrderColumns = value;
+    }
+
+    /// <summary>Exports column order, visibility and widths as portable JSON.</summary>
+    public string ExportColumnLayout()
+    {
+        var columns = Columns.Cast<DataGridViewColumn>()
+            .Select(column => new ColumnLayout(column.Name, column.DisplayIndex, column.Visible, column.Width))
+            .ToArray();
+        return JsonSerializer.Serialize(columns);
+    }
+
+    /// <summary>Restores matching columns from a previously exported layout; unknown columns are ignored.</summary>
+    public void ImportColumnLayout(string json)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(json);
+        var saved = JsonSerializer.Deserialize<ColumnLayout[]>(json)
+            ?? throw new ArgumentException("Column layout cannot be null.", nameof(json));
+        var matches = saved.Where(item => !string.IsNullOrWhiteSpace(item.Name))
+            .GroupBy(item => item.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.First())
+            .Where(item => Columns.Contains(item.Name))
+            .ToArray();
+        foreach (var item in matches)
+        {
+            var column = Columns[item.Name];
+            if (column is null) continue;
+            column.Visible = item.Visible;
+            if (item.Width is >= 20 and <= 5000) column.Width = item.Width;
+        }
+        foreach (var item in matches.OrderBy(item => item.DisplayIndex))
+        {
+            var column = Columns[item.Name];
+            if (column is not null && item.DisplayIndex >= 0)
+                column.DisplayIndex = Math.Min(item.DisplayIndex, Columns.Count - 1);
+        }
+    }
+
+    private sealed record ColumnLayout(string Name, int DisplayIndex, bool Visible, int Width);
 
     /// <summary>Optional host-provided formatting callback applied after native formatting.</summary>
     [Browsable(false)]
@@ -31,6 +78,7 @@ public class LabzDataGrid : DataGridView
         AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
         SelectionMode = DataGridViewSelectionMode.FullRowSelect;
         MultiSelect = false;
+        AllowUserToOrderColumns = true;
         AllowUserToAddRows = false;
         AllowUserToDeleteRows = false;
         ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
