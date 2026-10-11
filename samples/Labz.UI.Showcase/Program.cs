@@ -44,7 +44,11 @@ public sealed class ShowcaseForm : Form
         _theme.Anchor = AnchorStyles.Top | AnchorStyles.Right;
         _theme.Location = new Point(Width - 220, 25);
         header.Resize += (_, _) => _theme.Left = Math.Max(350, header.ClientSize.Width - _theme.Width - 24);
-        header.Controls.AddRange([heading, _subtitle, _theme]);
+        var openDemo = new LabzButton { Text = "Open Trading Desk Demo", Width = 210, Height = 36 };
+        openDemo.Location = new Point(24, 72);
+        openDemo.Click += (_, _) => { using var demo = new TradingDeskDemoForm(); demo.ShowDialog(this); };
+        header.Height = 118;
+        header.Controls.AddRange([heading, _subtitle, _theme, openDemo]);
         Controls.Add(header);
         _theme.Click += (_, _) => UiThemeManager.Apply(
             ReferenceEquals(UiThemeManager.Current, UiTheme.Light) ? UiTheme.Dark : UiTheme.Light);
