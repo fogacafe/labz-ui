@@ -11,6 +11,72 @@ public class LabzDataGrid : DataGridView
     private bool _stripedRows = true;
     private Font? _headerFont;
     private bool _columnSelectorEnabled = true;
+    private readonly Dictionary<string, bool> _groupExpanded = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, List<int>> _groupRows = new(StringComparer.Ordinal);
+    private readonly Dictionary<int, string> _rowGroupKeys = new();
+
+    /// <summary>Creates a one-level grouping projection for currently bound rows.</summary>
+    /// <remarks>Grouping is local-only and does not support virtual mode or server paging.</remarks>
+    public void GroupRows(Func<DataGridViewRow, string> keySelector)
+    {
+        ArgumentNullException.ThrowIfNull(keySelector);
+        if (VirtualMode || DataSource is null)
+            throw new InvalidOperationException("Grouping requires a bound, non-virtual grid.");
+        _groupRows.Clear();
+        _rowGroupKeys.Clear();
+        for (var index = 0; index < RowCount; index++)
+        {
+            var row = Rows[index];
+            if (row.IsNewRow) continue;
+            var key = keySelector(row) ?? string.Empty;
+            if (!_groupRows.TryGetValue(key, out var members))
+                _groupRows[key] = members = new List<int>();
+            members.Add(index);
+            _rowGroupKeys[index] = key;
+        }
+        ApplyGroupVisibility();
+    }
+
+    /// <summary>Gets local group keys and counts for a host-rendered group header.</summary>
+    public IReadOnlyList<(string Key, int Count, bool Expanded)> GetGroups()
+        => _groupRows.Select(pair => (pair.Key, pair.Value.Count, !_groupExpanded.TryGetValue(pair.Key, out var expanded) || expanded)).ToArray();
+
+    /// <summary>Controls whether the group's data rows are visible.</summary>
+    public bool SetGroupExpanded(string key, bool expanded)
+    {
+        if (!_groupRows.ContainsKey(key)) return false;
+        _groupExpanded[key] = expanded;
+        ApplyGroupVisibility();
+        return true;
+    }
+
+    /// <summary>Clears grouping and restores all data rows.</summary>
+    public void ClearGrouping()
+    {
+        _groupRows.Clear();
+        _rowGroupKeys.Clear();
+        _groupExpanded.Clear();
+        foreach (DataGridViewRow row in Rows)
+            if (!row.IsNewRow) row.Visible = true;
+    }
+
+    private void ApplyGroupVisibility()
+    {
+        foreach (var group in _groupRows)
+        {
+            var expanded = !_groupExpanded.TryGetValue(group.Key, out var state) || state;
+            foreach (var index in group.Value)
+            {
+                if (index >= RowCount) continue;
+                var row = Rows[index];
+                if (!expanded && CurrentCell?.RowIndex == index)
+                    CurrentCell = null;
+                row.Visible = expanded;
+            }
+        }
+    }
+
+
     private readonly Dictionary<(int Row, int Column), CellValidation> _cellValidations = new();
     private readonly Dictionary<int, CellValidation> _rowValidations = new();
     private readonly Dictionary<string, CellValidation> _keyedRowValidations = new(StringComparer.Ordinal);
