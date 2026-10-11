@@ -89,19 +89,24 @@ public sealed class ScreenLifecycleIntegrationTests
         var result = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var thread = new Thread(() =>
         {
-            try
+            using var form = new Form { ShowInTaskbar = false, WindowState = FormWindowState.Minimized };
+            form.Shown += async (_, _) =>
             {
-                // Run synchronously on this STA thread; presenters use Task.Yield()
-                // and can resume on the installed WinForms synchronization context.
-                using var context = new ApplicationContext();
-                action().GetAwaiter().GetResult();
-                result.SetResult();
-            }
-            catch (Exception ex) { result.SetException(ex); }
+                try
+                {
+                    await action();
+                    result.TrySetResult();
+                }
+                catch (Exception ex) { result.TrySetException(ex); }
+                finally { form.Close(); }
+            };
+            try { Application.Run(form); }
+            catch (Exception ex) { result.TrySetException(ex); }
         });
         thread.SetApartmentState(ApartmentState.STA);
+        thread.IsBackground = true;
         thread.Start();
-        return result.Task;
+        return result.Task.WaitAsync(TimeSpan.FromSeconds(30));
     }
 
     private sealed class TrackedState(Action onDisposed) : IDisposable
