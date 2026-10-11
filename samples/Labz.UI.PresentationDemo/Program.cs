@@ -68,13 +68,32 @@ internal sealed class TradeForm : Form
     public Label InstanceLabel { get; } = new() { Dock = DockStyle.Top, Height = 40 };
     public TextBox Notes { get; } = new() { Dock = DockStyle.Top, PlaceholderText = "Independent notes for this tab" };
 
-    public TradeForm(TradeSelectorControl selector, TradeDetailsControl details)
+    public TradeForm(TradeSelectorControl selector, TradeDetailsControl details, IScreenLoadingManager loading)
     {
         Text = "Trade editor";
         Controls.Add(Notes);
         Controls.Add(details);
         Controls.Add(selector);
         Controls.Add(InstanceLabel);
+        var indicator = new Label { Dock = DockStyle.Top, Height = 28 };
+        Controls.Add(indicator);
+        void UpdateIndicator()
+        {
+            if (IsDisposed || Disposing) return;
+            indicator.Text = loading.IsLoading ? $"Loading ({loading.ActiveCount}): {loading.Message}" : "Ready";
+        }
+        EventHandler changed = (_, _) =>
+        {
+            if (IsDisposed || Disposing) return;
+            if (InvokeRequired)
+            {
+                if (IsHandleCreated) BeginInvoke((Action)UpdateIndicator);
+            }
+            else UpdateIndicator();
+        };
+        loading.Changed += changed;
+        Disposed += (_, _) => loading.Changed -= changed;
+        UpdateIndicator();
     }
 }
 
