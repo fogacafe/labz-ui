@@ -11,6 +11,81 @@ public class LabzDataGrid : DataGridView
     private bool _stripedRows = true;
     private Font? _headerFont;
     private bool _columnSelectorEnabled = true;
+    private readonly Dictionary<(int Row, int Column), CellValidation> _cellValidations = new();
+    private readonly Dictionary<int, CellValidation> _rowValidations = new();
+
+    /// <summary>Optional callback when a committed cell value changes. Native CellValueChanged remains available.</summary>
+    [Browsable(false)]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public Action<DataGridViewCellEventArgs>? CellValueChangedHandler { get; set; }
+
+    /// <summary>Optional callback for custom row styling after built-in validation styling.</summary>
+    [Browsable(false)]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public Action<DataGridViewCellFormattingEventArgs>? CustomCellStyleHandler { get; set; }
+
+    /// <summary>Paints a whole row with an error or warning marker without modifying its values.</summary>
+    public void SetRowValidation(int rowIndex, CellValidationSeverity severity, string message)
+    {
+        if (rowIndex < 0 || rowIndex >= RowCount) throw new ArgumentOutOfRangeException(nameof(rowIndex));
+        ArgumentException.ThrowIfNullOrWhiteSpace(message);
+        _rowValidations[rowIndex] = new CellValidation(severity, message);
+        InvalidateRow(rowIndex);
+    }
+
+    public bool ClearRowValidation(int rowIndex)
+    {
+        var removed = _rowValidations.Remove(rowIndex);
+        if (removed && rowIndex >= 0 && rowIndex < RowCount) InvalidateRow(rowIndex);
+        return removed;
+    }
+
+    public void ClearRowValidations()
+    {
+        _rowValidations.Clear();
+        Invalidate();
+    }
+
+
+    /// <summary>Enables editing using native DataGridView editing semantics.</summary>
+    [Category("Behavior")]
+    [DefaultValue(false)]
+    public bool EditableGrid
+    {
+        get => !ReadOnly;
+        set => ReadOnly = !value;
+    }
+
+    /// <summary>Marks a cell with an error or warning and shows its message as a tooltip.</summary>
+    public void SetCellValidation(int rowIndex, int columnIndex, CellValidationSeverity severity, string message)
+    {
+        if (rowIndex < 0 || rowIndex >= RowCount) throw new ArgumentOutOfRangeException(nameof(rowIndex));
+        if (columnIndex < 0 || columnIndex >= ColumnCount) throw new ArgumentOutOfRangeException(nameof(columnIndex));
+        ArgumentException.ThrowIfNullOrWhiteSpace(message);
+        _cellValidations[(rowIndex, columnIndex)] = new CellValidation(severity, message);
+        InvalidateCell(columnIndex, rowIndex);
+    }
+
+    /// <summary>Clears one validation marker without modifying the cell value.</summary>
+    public bool ClearCellValidation(int rowIndex, int columnIndex)
+    {
+        var removed = _cellValidations.Remove((rowIndex, columnIndex));
+        if (removed && rowIndex >= 0 && rowIndex < RowCount && columnIndex >= 0 && columnIndex < ColumnCount)
+            InvalidateCell(columnIndex, rowIndex);
+        return removed;
+    }
+
+    /// <summary>Clears all visual validation markers.</summary>
+    public void ClearCellValidations()
+    {
+        _cellValidations.Clear();
+        Invalidate();
+    }
+
+    public enum CellValidationSeverity { Warning, Error }
+
+    private sealed record CellValidation(CellValidationSeverity Severity, string Message);
+
 
     /// <summary>Allows users to drag column headers to rearrange the display order.</summary>
     [Category("Behavior")]
@@ -162,6 +237,8 @@ public class LabzDataGrid : DataGridView
         SelectionMode = DataGridViewSelectionMode.FullRowSelect;
         MultiSelect = false;
         AllowUserToOrderColumns = true;
+        ReadOnly = true;
+        ShowCellToolTips = true;
         AllowUserToAddRows = false;
         AllowUserToDeleteRows = false;
         ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
@@ -285,10 +362,42 @@ public class LabzDataGrid : DataGridView
             UpdateHeaderFont();
     }
 
+    protected override void OnCellToolTipTextNeeded(DataGridViewCellToolTipTextNeededEventArgs e)
+    {
+        base.OnCellToolTipTextNeeded(e);
+        if (_cellValidations.TryGetValue((e.RowIndex, e.ColumnIndex), out var validation))
+            e.ToolTipText = validation.Message;
+        else if (_rowValidations.TryGetValue(e.RowIndex, out var rowValidation))
+            e.ToolTipText = rowValidation.Message;
+    }
+
+    protected override void OnCellPainting(DataGridViewCellPaintingEventArgs e)
+    {
+        base.OnCellPainting(e);
+        if (e.RowIndex < 0 || e.ColumnIndex < 0) return;
+        if (!_cellValidations.TryGetValue((e.RowIndex, e.ColumnIndex), out var validation) &&
+            !_rowValidations.TryGetValue(e.RowIndex, out validation)) return;
+        var color = validation.Severity == CellValidationSeverity.Error
+            ? Color.FromArgb(205, 65, 65)
+            : Color.FromArgb(210, 150, 35);
+        using var pen = new Pen(color, 2f);
+        var bounds = e.CellBounds;
+        if (bounds.Width > 4 && bounds.Height > 4)
+            e.Graphics.DrawLine(pen, bounds.Left + 3, bounds.Bottom - 3, bounds.Right - 3, bounds.Bottom - 3);
+    }
+
     protected override void OnCellFormatting(DataGridViewCellFormattingEventArgs e)
     {
         base.OnCellFormatting(e);
         CellFormattingHandler?.Invoke(e);
+        CustomCellStyleHandler?.Invoke(e);
+    }
+
+    protected override void OnCellValueChanged(DataGridViewCellEventArgs e)
+    {
+        base.OnCellValueChanged(e);
+        if (e.RowIndex >= 0 && e.ColumnIndex >= 0)
+            CellValueChangedHandler?.Invoke(e);
     }
 
     protected override void OnRowPrePaint(DataGridViewRowPrePaintEventArgs e)
