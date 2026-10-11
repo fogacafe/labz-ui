@@ -21,6 +21,8 @@ public class LabzStatusBar : UserControl
     private readonly Label _environmentLabel = new() { AutoSize = true, Padding = new Padding(8, 4, 8, 0) };
     private readonly Button _userButton = CreateContextButton();
     private readonly Button _tenantButton = CreateContextButton();
+    private LabzUserContext? _userContext;
+    private LabzTenantContext? _tenantContext;
     private string? _userName;
     private string? _tenantName;
     private string? _environmentName;
@@ -36,8 +38,16 @@ public class LabzStatusBar : UserControl
         _right.Controls.Add(_userButton);
         _right.Controls.Add(_tenantButton);
         _right.Controls.Add(_environmentLabel);
-        _userButton.Click += (_, _) => UserRequested?.Invoke(this, EventArgs.Empty);
-        _tenantButton.Click += (_, _) => TenantRequested?.Invoke(this, EventArgs.Empty);
+        _userButton.Click += (_, _) =>
+        {
+            UserContextRequested?.Invoke(this, new LabzContextRequestedEventArgs<LabzUserContext>(_userContext));
+            UserRequested?.Invoke(this, EventArgs.Empty);
+        };
+        _tenantButton.Click += (_, _) =>
+        {
+            TenantContextRequested?.Invoke(this, new LabzContextRequestedEventArgs<LabzTenantContext>(_tenantContext));
+            TenantRequested?.Invoke(this, EventArgs.Empty);
+        };
         UiThemeManager.ThemeChanged += OnThemeChanged;
         RefreshContext();
     }
@@ -55,7 +65,7 @@ public class LabzStatusBar : UserControl
     public string? UserName
     {
         get => _userName;
-        set { _userName = value; RefreshContext(); }
+        set { _userName = value; _userContext = null; RefreshContext(); }
     }
 
     [Category("Appearance")]
@@ -63,7 +73,25 @@ public class LabzStatusBar : UserControl
     public string? TenantName
     {
         get => _tenantName;
-        set { _tenantName = value; RefreshContext(); }
+        set { _tenantName = value; _tenantContext = null; RefreshContext(); }
+    }
+
+    /// <summary>Typed identity context; takes precedence over legacy UserName.</summary>
+    [Browsable(false)]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public LabzUserContext? UserContext
+    {
+        get => _userContext;
+        set { _userContext = value; _userName = value?.DisplayName; RefreshContext(); }
+    }
+
+    /// <summary>Typed tenant context; takes precedence over legacy TenantName.</summary>
+    [Browsable(false)]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public LabzTenantContext? TenantContext
+    {
+        get => _tenantContext;
+        set { _tenantContext = value; _tenantName = value?.DisplayName; RefreshContext(); }
     }
 
     [Category("Appearance")]
@@ -79,6 +107,12 @@ public class LabzStatusBar : UserControl
 
     /// <summary>Raised when the tenant area is clicked. The host controls tenant switching.</summary>
     public event EventHandler? TenantRequested;
+
+    /// <summary>Typed user context snapshot on user button click.</summary>
+    public event EventHandler<LabzContextRequestedEventArgs<LabzUserContext>>? UserContextRequested;
+
+    /// <summary>Typed tenant context snapshot on tenant button click.</summary>
+    public event EventHandler<LabzContextRequestedEventArgs<LabzTenantContext>>? TenantContextRequested;
 
     private static Button CreateContextButton() => new()
     {

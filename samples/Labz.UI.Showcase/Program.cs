@@ -121,10 +121,11 @@ public sealed class ShowcaseForm : Form
         var funds = new LabzModule("funds", "Funds", "F");
         funds.Pages.Add(new LabzNavigationPage("positions", "Positions", "Queries"));
         shell.SetModules([bonds, funds]);
-        shell.StatusBar.UserName = "Alex";
-        shell.StatusBar.TenantName = "Trading Desk";
+        shell.StatusBar.UserContext = new LabzUserContext { Id = "user-demo", DisplayName = "Alex", Email = "alex@example.test" };
+        shell.StatusBar.TenantContext = new LabzTenantContext { Id = "desk-trading", DisplayName = "Trading Desk" };
         shell.StatusBar.EnvironmentName = "DEV";
-        shell.StatusBar.TenantRequested += (_, _) => shell.StatusBar.TenantName = "Research";
+        shell.StatusBar.TenantContextRequested += (_, _) =>
+            shell.StatusBar.TenantContext = new LabzTenantContext { Id = "desk-research", DisplayName = "Research" };
         shell.StatusBar.UserRequested += (_, _) => MessageBox.Show("User profile requested");
         shell.ConnectWorkspace(new LabzTabWorkspace(), (moduleId, pageId) =>
             new LabzLabel { Text = moduleId + " / " + pageId, Dock = DockStyle.Top });
