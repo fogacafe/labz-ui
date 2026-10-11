@@ -216,12 +216,9 @@ public class LabzDatePicker : UserControl
         _visibleMonth = new DateTime(Value.Year, Value.Month, 1);
         RenderCalendar();
         AttachOwner();
-        var screen = Screen.FromControl(this).WorkingArea;
-        var origin = PointToScreen(Point.Empty);
-        var x = Math.Clamp(origin.X, screen.Left, Math.Max(screen.Left, screen.Right - _calendar.Width));
-        var y = origin.Y + Height + _calendar.Height <= screen.Bottom
-            ? origin.Y + Height : Math.Max(screen.Top, origin.Y - _calendar.Height);
-        _popup.Show(new Point(x, y));
+        // Anchor to the actual control instead of positioning a floating screen window.
+        // ToolStripDropDown handles flipping above the control when space is limited.
+        _popup.Show(this, new Point(0, Height), ToolStripDropDownDirection.BelowRight);
         Invalidate();
     }
 
@@ -297,6 +294,7 @@ public class LabzDatePicker : UserControl
             if (ancestor is ScrollableControl scroll)
             {
                 scroll.Scroll += OnAncestorScrolled;
+                scroll.Layout += OnAncestorLayout;
                 _scrollOwners.Add(scroll);
             }
         }
@@ -305,6 +303,10 @@ public class LabzDatePicker : UserControl
     }
     private void OnOwnerMoved(object? sender, EventArgs e) => _popup.Close();
     private void OnAncestorScrolled(object? sender, ScrollEventArgs e) => _popup.Close();
+    private void OnAncestorLayout(object? sender, LayoutEventArgs e)
+    {
+        if (_popup.Visible) _popup.Close();
+    }
     private void OnOwnerResize(object? sender, EventArgs e)
     {
         if (_owner?.WindowState == FormWindowState.Minimized) _popup.Close();
@@ -319,7 +321,11 @@ public class LabzDatePicker : UserControl
         if (_owner is null) return;
         _owner.Resize -= OnOwnerResize;
         _owner.Move -= OnOwnerMoved;
-        foreach (var scroll in _scrollOwners) scroll.Scroll -= OnAncestorScrolled;
+        foreach (var scroll in _scrollOwners)
+        {
+            scroll.Scroll -= OnAncestorScrolled;
+            scroll.Layout -= OnAncestorLayout;
+        }
         _scrollOwners.Clear();
         _owner.VisibleChanged -= OnOwnerVisibleChanged;
         _owner.FormClosed -= OnOwnerClosed;
