@@ -1,5 +1,7 @@
 using Labz.UI.Core.Theming;
 using Labz.UI.WinForms.Controls;
+using Labz.UI.WinForms.Layout;
+using Labz.UI.Validation;
 
 namespace Labz.UI.Showcase;
 
@@ -13,40 +15,256 @@ internal static class Program
     }
 }
 
+/// <summary>Interactive catalog of Labz UI controls and layout containers.</summary>
 public sealed class ShowcaseForm : Form
 {
-    private readonly LabzTextBox _normal = new() { Name = "Name", PlaceholderText = "Your name", Location = new Point(24, 270), Size = new Size(205, 44) };
-    private readonly LabzTextBox _error = new() { Name = "Ticker", PlaceholderText = "Ticker", ValidationState = Labz.UI.Validation.ValidationSeverity.Error, ValidationMessage = "Ticker is required", Location = new Point(254, 270), Size = new Size(205, 70) };
-    private readonly LabzTextBox _warning = new() { PlaceholderText = "Warning state", ValidationState = Labz.UI.Validation.ValidationSeverity.Warning, ValidationMessage = "Check this value", Location = new Point(24, 355), Size = new Size(205, 70) };
-    private readonly LabzTextBox _success = new() { PlaceholderText = "Success state", ValidationState = Labz.UI.Validation.ValidationSeverity.Success, ValidationMessage = "Looks good", Location = new Point(254, 355), Size = new Size(205, 70) };
-    private readonly LabzButton _solid = new() { Text = "Solid", Variant = LabzButtonVariant.Solid, Location = new Point(24, 58) };
-    private readonly LabzButton _outline = new() { Text = "Outline", Variant = LabzButtonVariant.Outline, Location = new Point(174, 58) };
-    private readonly LabzButton _ghost = new() { Text = "Ghost", Variant = LabzButtonVariant.Ghost, Location = new Point(324, 58) };
-    private readonly LabzButton _disabled = new() { Text = "Disabled", Enabled = false, Location = new Point(24, 120) };
-    private readonly LabzButton _large = new() { Text = "Large", ButtonSize = LabzButtonSize.Large, Location = new Point(174, 120) };
-    private readonly LabzButton _toggle = new() { Text = "Toggle theme", Location = new Point(24, 200), Width = 150 };
+    private readonly Panel _page = new() { Dock = DockStyle.Fill, AutoScroll = true };
+    private readonly Label _subtitle = new() { AutoSize = true };
+    private readonly LabzButton _theme = new() { Text = "Switch theme", Width = 160 };
+    private readonly LabzProgressBar _progress = new() { Value = 65, ShowPercentage = true, Width = 260 };
+    private readonly LabzLabel _status = new() { Text = "Ready", Variant = LabzLabelVariant.Muted };
+    private readonly Bitmap _sampleImage = CreateSampleImage();
 
     public ShowcaseForm()
     {
-        Text = "Labz UI Showcase — Buttons";
-        ClientSize = new Size(490, 455);
-        Controls.AddRange([_solid, _outline, _ghost, _disabled, _large, _toggle, _normal, _error, _warning, _success]);
-        _toggle.Click += (_, _) => UiThemeManager.Apply(
+        Text = "Labz UI • Component Gallery";
+        StartPosition = FormStartPosition.CenterScreen;
+        MinimumSize = new Size(850, 650);
+        ClientSize = new Size(1120, 800);
+        Controls.Add(_page);
+
+        var header = new Panel { Dock = DockStyle.Top, Height = 105, Padding = new Padding(24, 16, 24, 10) };
+        var heading = new LabzLabel { Text = "Labz UI", Variant = LabzLabelVariant.Heading, Location = new Point(24, 12) };
+        _subtitle.Text = "WinForms controls • interactive component gallery";
+        _subtitle.Location = new Point(26, 52);
+        _theme.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+        _theme.Location = new Point(Width - 220, 25);
+        header.Resize += (_, _) => _theme.Left = Math.Max(350, header.ClientSize.Width - _theme.Width - 24);
+        header.Controls.AddRange([heading, _subtitle, _theme]);
+        Controls.Add(header);
+        _theme.Click += (_, _) => UiThemeManager.Apply(
             ReferenceEquals(UiThemeManager.Current, UiTheme.Light) ? UiTheme.Dark : UiTheme.Light);
+
+        var gallery = new TableLayoutPanel
+        {
+            Dock = DockStyle.Top, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            ColumnCount = 2, Padding = new Padding(20), GrowStyle = TableLayoutPanelGrowStyle.AddRows
+        };
+        gallery.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+        gallery.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+        _page.Controls.Add(gallery);
+
+        AddCard(gallery, "Buttons", CreateButtons());
+        AddCard(gallery, "Text & validation", CreateTextInputs());
+        AddCard(gallery, "Selection", CreateSelection());
+        AddCard(gallery, "Search & lookup", CreateLookup());
+        AddCard(gallery, "Images", CreateImages());
+        AddCard(gallery, "Feedback", CreateFeedback());
+        AddCard(gallery, "Containers", CreateContainers());
+        AddCard(gallery, "Typography & separators", CreateTypography());
+
         UiThemeManager.ThemeChanged += RefreshTheme;
         RefreshTheme(this, EventArgs.Empty);
     }
 
+    private static void AddCard(TableLayoutPanel gallery, string title, Control content)
+    {
+        var row = gallery.Controls.Count / 2;
+        var col = gallery.Controls.Count % 2;
+        while (gallery.RowCount <= row)
+        {
+            gallery.RowCount++;
+            gallery.RowStyles.Add(new RowStyle(SizeType.Absolute, 320));
+        }
+        var card = new LabzGroupBox
+        {
+            Text = title, Dock = DockStyle.Fill, Margin = new Padding(8),
+            Padding = new Padding(14, 28, 14, 14)
+        };
+        content.Dock = DockStyle.Fill;
+        card.Controls.Add(content);
+        gallery.Controls.Add(card, col, row);
+    }
+
+    private Control CreateButtons()
+    {
+        var panel = Stack();
+        var variants = Flow();
+        variants.Controls.AddRange([
+            new LabzButton { Text = "Solid" },
+            new LabzButton { Text = "Outline", Variant = LabzButtonVariant.Outline },
+            new LabzButton { Text = "Ghost", Variant = LabzButtonVariant.Ghost }
+        ]);
+        var sizes = Flow();
+        sizes.Controls.AddRange([
+            new LabzButton { Text = "Small", ButtonSize = LabzButtonSize.Small },
+            new LabzButton { Text = "Large", ButtonSize = LabzButtonSize.Large }
+        ]);
+        var iconButton = new LabzButton
+        {
+            Text = "Image + text", Image = _sampleImage,
+            ImagePlacement = LabzButtonImagePlacement.Left,
+            ImageSize = new Size(22, 22), Width = 180
+        };
+        iconButton.Click += (_, _) => _status.Text = "Image button clicked";
+        panel.Controls.AddRange([iconButton, sizes, variants]);
+        return panel;
+    }
+
+    private static Control CreateTextInputs()
+    {
+        var panel = Stack();
+        panel.Controls.AddRange([
+            new LabzTextBox { PlaceholderText = "Normal input", Width = 300, Height = 44 },
+            new LabzTextBox { PlaceholderText = "Required field", ValidationState = ValidationSeverity.Error,
+                ValidationMessage = "This field is required", Width = 300, Height = 70 },
+            new LabzTextBox { PlaceholderText = "Warning", ValidationState = ValidationSeverity.Warning,
+                ValidationMessage = "Please double-check", Width = 300, Height = 70 }
+        ]);
+        return panel;
+    }
+
+    private static Control CreateSelection()
+    {
+        var panel = Stack();
+        var combo = new LabzComboBox { Width = 280 };
+        combo.Items.AddRange(["Alpha", "Beta", "Gamma"]);
+        combo.SelectedIndex = 0;
+        var radios = Flow();
+        radios.Controls.AddRange([
+            new LabzRadioButton { Text = "Daily", Checked = true },
+            new LabzRadioButton { Text = "Weekly" }
+        ]);
+        panel.Controls.AddRange([
+            new LabzSwitch { Checked = true, Text = "Notifications", Width = 230 },
+            new LabzCheckBox { Text = "Remember my choice", Checked = true },
+            radios, combo
+        ]);
+        return panel;
+    }
+
+    private static Control CreateLookup()
+    {
+        var panel = Stack();
+        var lookup = new LabzSearchLookup { Width = 330, PlaceholderText = "Search a city..." };
+        var cities = new[] { "São Paulo", "Campinas", "Rio de Janeiro", "Curitiba", "Florianópolis", "Belo Horizonte" };
+        lookup.SearchProvider = (query, limit, token) =>
+        {
+            token.ThrowIfCancellationRequested();
+            IReadOnlyList<LabzLookupItem> results = cities
+                .Where(city => city.Contains(query, StringComparison.OrdinalIgnoreCase))
+                .Take(limit)
+                .Select(city => new LabzLookupItem(city, city, new Dictionary<string, object?>()))
+                .ToArray();
+            return Task.FromResult(results);
+        };
+        panel.Controls.AddRange([
+            new LabzLabel { Text = "Try typing São, Rio or Curitiba", Variant = LabzLabelVariant.Caption },
+            lookup
+        ]);
+        return panel;
+    }
+
+    private Control CreateImages()
+    {
+        var panel = Stack();
+        var images = Flow();
+        images.Controls.AddRange([
+            new LabzImage { Image = _sampleImage, Fit = LabzImageFit.Contain,
+                ShowBorder = true, Size = new Size(135, 100) },
+            new LabzImage { Image = _sampleImage, Fit = LabzImageFit.Cover,
+                CornerRadius = 20, Size = new Size(135, 100) },
+            new LabzImage { Image = _sampleImage, Fit = LabzImageFit.Fill,
+                Opacity = .55f, Size = new Size(135, 100) }
+        ]);
+        panel.Controls.AddRange([
+            new LabzLabel { Text = "Contain • Cover • Fill with 55% opacity", Variant = LabzLabelVariant.Caption },
+            images
+        ]);
+        return panel;
+    }
+
+    private Control CreateFeedback()
+    {
+        var panel = Stack();
+        var update = new LabzButton { Text = "Advance progress" };
+        update.Click += (_, _) => _progress.Value = _progress.Value >= 100 ? 0 : Math.Min(100, _progress.Value + 10);
+        panel.Controls.AddRange([
+            _status,
+            update,
+            new LabzProgressBar { Value = 35, Variant = LabzProgressVariant.Success, Width = 260 },
+            _progress
+        ]);
+        return panel;
+    }
+
+    private static Control CreateContainers()
+    {
+        var panel = Stack();
+        var accordion = new LabzAccordion { Title = "Advanced settings", ExpandedHeight = 150, Width = 360 };
+        accordion.ContentPanel.Controls.Add(new LabzCheckBox { Text = "Enable advanced mode", Dock = DockStyle.Top });
+        var inner = new LabzPanel { ShowBorder = true, Height = 55, Width = 340 };
+        inner.Controls.Add(new LabzLabel { Text = "Nested LabzPanel", Dock = DockStyle.Top });
+        panel.Controls.AddRange([accordion, inner]);
+        return panel;
+    }
+
+    private static Control CreateTypography()
+    {
+        var panel = Stack();
+        panel.Controls.AddRange([
+            new LabzLabel { Text = "Muted helper text", Variant = LabzLabelVariant.Muted },
+            new LabzSeparator { Width = 320 },
+            new LabzLabel { Text = "Caption", Variant = LabzLabelVariant.Caption },
+            new LabzLabel { Text = "Section heading", Variant = LabzLabelVariant.Heading },
+            new LabzLabel { Text = "Body text", Variant = LabzLabelVariant.Body }
+        ]);
+        return panel;
+    }
+
+    private static LabzStackPanel Stack() => new()
+    {
+        Direction = LabzDirection.Vertical, Wrap = false, Spacing = 8,
+        Padding = new Padding(6)
+    };
+
+    private static LabzFlowPanel Flow() => new()
+    {
+        Direction = LabzDirection.Horizontal, Wrap = true, Spacing = 8,
+        Height = 60, Width = 410, Padding = new Padding(2)
+    };
+
+    private static Bitmap CreateSampleImage()
+    {
+        var bitmap = new Bitmap(320, 180);
+        using var g = Graphics.FromImage(bitmap);
+        g.Clear(Color.FromArgb(61, 106, 230));
+        using var brush = new SolidBrush(Color.FromArgb(255, 194, 86));
+        g.FillEllipse(brush, 110, 20, 100, 100);
+        using var pen = new Pen(Color.White, 7);
+        g.DrawLine(pen, 0, 160, 120, 90);
+        g.DrawLine(pen, 120, 90, 220, 155);
+        g.DrawLine(pen, 220, 155, 320, 70);
+        return bitmap;
+    }
+
     private void RefreshTheme(object? sender, EventArgs e)
     {
-        BackColor = UiThemeManager.Current.Background;
-        ForeColor = UiThemeManager.Current.Foreground;
+        var theme = UiThemeManager.Current;
+        BackColor = theme.Background;
+        ForeColor = theme.Foreground;
+        _page.BackColor = theme.Background;
+        _subtitle.ForeColor = theme.Foreground;
         Invalidate(true);
     }
 
     protected override void Dispose(bool disposing)
     {
-        if (disposing) UiThemeManager.ThemeChanged -= RefreshTheme;
+        if (disposing)
+        {
+            UiThemeManager.ThemeChanged -= RefreshTheme;
+            _sampleImage.Dispose();
+        }
         base.Dispose(disposing);
     }
 }
