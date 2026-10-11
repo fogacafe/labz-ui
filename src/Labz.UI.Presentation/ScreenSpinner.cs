@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
@@ -22,6 +23,7 @@ public sealed class ScreenSpinner : Control
         ForeColor = Color.FromArgb(70, 110, 205);
     }
 
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public bool Animating
     {
         get => _animating;
