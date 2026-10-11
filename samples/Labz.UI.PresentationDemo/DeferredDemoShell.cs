@@ -1,4 +1,5 @@
 using Labz.UI.Presentation;
+using Labz.UI.Core.Theming;
 
 namespace Labz.UI.PresentationDemo;
 
@@ -60,6 +61,9 @@ internal sealed class DeferredDemoShell : Form
         var keyed = new Button { Text = "Open/reuse trade #1024", AutoSize = true };
         var positions = new Button { Text = "Open/reuse positions", AutoSize = true };
         var close = new Button { Text = "Close selected", AutoSize = true };
+        var theme = new Button { Text = "Toggle light/dark", AutoSize = true };
+        theme.Click += (_, _) => UiThemeManager.Apply(
+            ReferenceEquals(UiThemeManager.Current, UiTheme.Light) ? UiTheme.Dark : UiTheme.Light);
         open.Click += (_, _) => OpenTrade(ScreenOpenPolicy.NewInstance);
         keyed.Click += (_, _) => OpenTrade(ScreenOpenPolicy.ReuseByKey);
         positions.Click += (_, _) => OpenPositions();
@@ -68,6 +72,7 @@ internal sealed class DeferredDemoShell : Form
         toolbar.Controls.Add(keyed);
         toolbar.Controls.Add(positions);
         toolbar.Controls.Add(close);
+        toolbar.Controls.Add(theme);
         Controls.Add(_tabs);
         Controls.Add(toolbar);
         FormClosing += OnClosing;
