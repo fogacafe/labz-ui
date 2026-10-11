@@ -61,6 +61,7 @@ public sealed class ShowcaseForm : Form
         AddCard(gallery, "Buttons", CreateButtons());
         AddCard(gallery, "Navigation", CreateNavigation());
         AddCard(gallery, "App shell", CreateAppShell());
+        AddCard(gallery, "Tab workspace", CreateTabWorkspace());
         AddCard(gallery, "Advanced inputs", CreateAdvancedInputs());
         AddCard(gallery, "Visual components", CreateVisualComponents());
         AddCard(gallery, "Data grid", CreateDataGrid());
@@ -95,6 +96,14 @@ public sealed class ShowcaseForm : Form
         content.Dock = DockStyle.Fill;
         card.Controls.Add(content);
         gallery.Controls.Add(card, col, row);
+    }
+
+    private static Control CreateTabWorkspace()
+    {
+        var workspace = new LabzTabWorkspace();
+        workspace.Open("bonds/trades", "Trades", () => new LabzTextBox { Text = "Unsaved trade draft", Dock = DockStyle.Top });
+        workspace.Open("funds/positions", "Positions", () => new LabzLabel { Text = "Fund positions", Dock = DockStyle.Top });
+        return workspace;
     }
 
     private static Control CreateAppShell()
