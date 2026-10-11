@@ -18,7 +18,7 @@ public class LabzComboBox : UserControl
     private bool _showSearchButton;
     private readonly Button _arrow = new() { Text = "▾", FlatStyle = FlatStyle.Flat, TabStop = false, Cursor = Cursors.Hand };
     private bool _hovered;
-    private readonly Label _selectionDisplay = new() { AutoEllipsis = true, TextAlign = ContentAlignment.MiddleLeft, Cursor = Cursors.Hand, BackColor = Color.Transparent };
+    private readonly Label _selectionDisplay = new() { AutoEllipsis = true, TextAlign = ContentAlignment.MiddleLeft, Cursor = Cursors.Hand };
 
     public LabzComboBox()
     {
@@ -201,7 +201,7 @@ public class LabzComboBox : UserControl
         var actionWidth = _showSearchButton ? 36 : 0;
         _combo.Bounds = new Rectangle(10, Math.Max(2, (Height - _combo.Height) / 2),
             Math.Max(1, Width - actionWidth - 18), _combo.Height);
-        _selectionDisplay.Bounds = new Rectangle(12, 4, Math.Max(1, Width - actionWidth - 48), Math.Max(1, Height - 8));
+        _selectionDisplay.Bounds = new Rectangle(12, 4, Math.Max(1, Width - actionWidth - 44), Math.Max(1, Height - 8));
         _selectionDisplay.BringToFront();
         _arrow.Bounds = new Rectangle(Math.Max(0, Width - actionWidth - 32), 4, 28, Math.Max(1, Height - 8));
         _searchButton.Bounds = new Rectangle(Math.Max(0, Width - 36),
@@ -245,6 +245,7 @@ public class LabzComboBox : UserControl
         _arrow.BackColor = theme.Surface;
         _arrow.ForeColor = theme.Foreground;
         _selectionDisplay.ForeColor = theme.Foreground;
+        _selectionDisplay.BackColor = theme.Surface;
         _combo.BackColor = theme.Surface;
         _combo.ForeColor = theme.Foreground;
         _combo.Invalidate();
