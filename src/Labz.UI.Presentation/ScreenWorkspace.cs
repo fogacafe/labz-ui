@@ -70,6 +70,52 @@ public sealed class ScreenWorkspace : IAsyncDisposable
         }
     }
 
+    public DeferredScreenInstance<TView> Open<TView, TPresenter, TParameters>(
+        string title,
+        TParameters parameters,
+        ScreenOpenPolicy policy = ScreenOpenPolicy.NewInstance,
+        string? key = null,
+        CancellationToken cancellationToken = default)
+        where TView : Form
+        where TPresenter : class, IAsyncScreenPresenter<TView>, IScreenParameters<TParameters>
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        if (_shutdownPending) throw new InvalidOperationException("Workspace shutdown approval is in progress.");
+        var screen = _navigator.Open<TView, TPresenter, TParameters>(parameters, policy, key, cancellationToken);
+        if (_screens.TryGetValue(screen, out var existing))
+        {
+            _tabs.SelectedTab = existing.Page;
+            return screen;
+        }
+
+        var page = new TabPage(title);
+        try
+        {
+            screen.View.TopLevel = false;
+            screen.View.FormBorderStyle = FormBorderStyle.None;
+            screen.View.Dock = DockStyle.Fill;
+            page.Controls.Add(screen.View);
+            _tabs.TabPages.Add(page);
+            _screens.Add(screen, (page, async () =>
+            {
+                _navigator.Forget(screen);
+                await screen.DisposeAsync();
+            }));
+            screen.View.Show();
+            _tabs.SelectedTab = page;
+            return screen;
+        }
+        catch
+        {
+            _screens.Remove(screen);
+            _tabs.TabPages.Remove(page);
+            page.Dispose();
+            _navigator.Forget(screen);
+            _ = screen.DisposeAsync();
+            throw;
+        }
+    }
+
     public bool TryGetPage<TView>(DeferredScreenInstance<TView> screen, out TabPage? page)
         where TView : Form
     {
@@ -138,16 +184,24 @@ public sealed class ScreenWorkspace : IAsyncDisposable
     {
         if (_disposed) return;
         _disposed = true;
-        // Disposal is forced: callers should request guarded close before shutdown.
+        // Disposal is forced: attempt every screen even when a presenter fails to close.
+        var failures = new List<Exception>();
         foreach (var screen in _screens.Keys.ToArray())
         {
             if (!_screens.Remove(screen, out var entry)) continue;
-            _tabs.TabPages.Remove(entry.Page);
-            var closing = CloseCoreAsync(entry);
-            _closing.Add(closing);
-            try { await closing; }
-            finally { _closing.Remove(closing); }
+            try
+            {
+                _tabs.TabPages.Remove(entry.Page);
+                var closing = CloseCoreAsync(entry);
+                _closing.Add(closing);
+                try { await closing; }
+                finally { _closing.Remove(closing); }
+            }
+            catch (Exception error) { failures.Add(error); }
         }
-        await Task.WhenAll(_closing.ToArray());
+        try { await Task.WhenAll(_closing.ToArray()); }
+        catch (Exception error) { failures.Add(error); }
+        if (failures.Count == 1) System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failures[0]).Throw();
+        if (failures.Count > 1) throw new AggregateException("One or more screens failed during shutdown.", failures);
     }
 }
