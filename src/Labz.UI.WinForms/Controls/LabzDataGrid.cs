@@ -13,6 +13,85 @@ public class LabzDataGrid : DataGridView
     private bool _columnSelectorEnabled = true;
     private readonly Dictionary<(int Row, int Column), CellValidation> _cellValidations = new();
     private readonly Dictionary<int, CellValidation> _rowValidations = new();
+    private readonly Dictionary<string, CellValidation> _keyedRowValidations = new(StringComparer.Ordinal);
+    private readonly Dictionary<(string Key, string Column), CellValidation> _keyedCellValidations = new();
+
+    /// <summary>Resolves a stable record key from a bound row. Return null for rows without an identity.</summary>
+    [Browsable(false)]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public Func<DataGridViewRow, string?>? ValidationRowKeySelector { get; set; }
+
+    /// <summary>Sets a validation marker that follows the record through bound sorting and filtering.</summary>
+    public void SetKeyedRowValidation(string key, CellValidationSeverity severity, string message)
+    {
+        EnsureKeyedValidationSupported();
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+        ArgumentException.ThrowIfNullOrWhiteSpace(message);
+        _keyedRowValidations[key] = new CellValidation(severity, message);
+        Invalidate();
+    }
+
+    /// <summary>Sets a cell marker by stable record key and stable column Name.</summary>
+    public void SetKeyedCellValidation(string key, string columnName, CellValidationSeverity severity, string message)
+    {
+        EnsureKeyedValidationSupported();
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+        ArgumentException.ThrowIfNullOrWhiteSpace(columnName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(message);
+        _keyedCellValidations[(key, columnName)] = new CellValidation(severity, message);
+        Invalidate();
+    }
+
+    public bool ClearKeyedRowValidation(string key)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+        var removed = _keyedRowValidations.Remove(key);
+        if (removed) Invalidate();
+        return removed;
+    }
+
+    public bool ClearKeyedCellValidation(string key, string columnName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+        ArgumentException.ThrowIfNullOrWhiteSpace(columnName);
+        var removed = _keyedCellValidations.Remove((key, columnName));
+        if (removed) Invalidate();
+        return removed;
+    }
+
+    public void ClearKeyedValidations()
+    {
+        _keyedRowValidations.Clear();
+        _keyedCellValidations.Clear();
+        Invalidate();
+    }
+
+    private void EnsureKeyedValidationSupported()
+    {
+        if (VirtualMode || ValidationRowKeySelector is null)
+            throw new InvalidOperationException("Keyed validation requires bound rows and a ValidationRowKeySelector.");
+    }
+
+    private bool TryGetValidation(int rowIndex, int columnIndex, out CellValidation? validation)
+    {
+        validation = null;
+        if (rowIndex < 0 || rowIndex >= RowCount || columnIndex < 0 || columnIndex >= ColumnCount)
+            return false;
+        if (!VirtualMode && ValidationRowKeySelector is not null)
+        {
+            var key = ValidationRowKeySelector(Rows[rowIndex]);
+            if (!string.IsNullOrEmpty(key))
+            {
+                if (_keyedCellValidations.TryGetValue((key, Columns[columnIndex].Name), out validation))
+                    return true;
+                if (_keyedRowValidations.TryGetValue(key, out validation))
+                    return true;
+            }
+        }
+        if (_cellValidations.TryGetValue((rowIndex, columnIndex), out validation)) return true;
+        return _rowValidations.TryGetValue(rowIndex, out validation);
+    }
+
 
     /// <summary>Optional callback when a committed cell value changes. Native CellValueChanged remains available.</summary>
     [Browsable(false)]
@@ -365,19 +444,16 @@ public class LabzDataGrid : DataGridView
     protected override void OnCellToolTipTextNeeded(DataGridViewCellToolTipTextNeededEventArgs e)
     {
         base.OnCellToolTipTextNeeded(e);
-        if (_cellValidations.TryGetValue((e.RowIndex, e.ColumnIndex), out var validation))
-            e.ToolTipText = validation.Message;
-        else if (_rowValidations.TryGetValue(e.RowIndex, out var rowValidation))
-            e.ToolTipText = rowValidation.Message;
+        if (TryGetValidation(e.RowIndex, e.ColumnIndex, out var validation))
+            e.ToolTipText = validation!.Message;
     }
 
     protected override void OnCellPainting(DataGridViewCellPaintingEventArgs e)
     {
         base.OnCellPainting(e);
         if (e.RowIndex < 0 || e.ColumnIndex < 0) return;
-        if (!_cellValidations.TryGetValue((e.RowIndex, e.ColumnIndex), out var validation) &&
-            !_rowValidations.TryGetValue(e.RowIndex, out validation)) return;
-        var color = validation.Severity == CellValidationSeverity.Error
+        if (!TryGetValidation(e.RowIndex, e.ColumnIndex, out var validation)) return;
+        var color = validation!.Severity == CellValidationSeverity.Error
             ? Color.FromArgb(205, 65, 65)
             : Color.FromArgb(210, 150, 35);
         using var pen = new Pen(color, 2f);
