@@ -32,6 +32,8 @@ public class LabzSearchLookup : UserControl
     private int _maxResults = 10;
     private bool _settingSelection;
     private bool _highlightFirstOnResults;
+    private bool _openingPopup;
+    private readonly System.Windows.Forms.Timer _outsideClickMonitor = new() { Interval = 75 };
 
     private int _debounceMilliseconds = 350;
 
@@ -45,6 +47,7 @@ public class LabzSearchLookup : UserControl
         _query.MouseLeave += (_, _) => { _hovered = false; Invalidate(); };
         _results.AccessibleName = "Lookup results";
         _timer.Interval = _debounceMilliseconds;
+        _outsideClickMonitor.Tick += (_, _) => CheckPopupDismissal();
         _timer.Tick += (_, _) => { _timer.Stop(); _ = SearchOnEventAsync(); };
         _query.TextChanged += (_, _) =>
         {
@@ -88,7 +91,7 @@ public class LabzSearchLookup : UserControl
         _results.Visible = true;
         _popupPanel.Controls.Add(_results);
         _popupPanel.Controls.Add(_status);
-        _popup.Closed += (_, _) => Invalidate();
+        _popup.Closed += (_, _) => { _outsideClickMonitor.Stop(); Invalidate(); };
         _popup.Items.Add(new ToolStripControlHost(_popupPanel)
         {
             AutoSize = false,
@@ -318,11 +321,35 @@ public class LabzSearchLookup : UserControl
         if (!_popup.Visible)
         {
             var keepTyping = _query.Focused;
-            _popup.AutoClose = !keepTyping;
+            // A non-activating dropdown keeps the editor focused during async searches.
+            // Dismissal is managed explicitly so clicks outside still close the popup.
+            _popup.AutoClose = false;
             AttachPopupOwner();
-            _popup.Show(new Point(x, Math.Max(screen.Top, y)));
-            if (keepTyping) _query.Focus();
+            _openingPopup = true;
+            try
+            {
+                _popup.Show(new Point(x, Math.Max(screen.Top, y)));
+                if (keepTyping) _query.Focus();
+                _outsideClickMonitor.Start();
+            }
+            finally { _openingPopup = false; }
         }
+    }
+
+    private void CheckPopupDismissal()
+    {
+        if (_openingPopup || !_popup.Visible) { if (!_popup.Visible) _outsideClickMonitor.Stop(); return; }
+        if (!Visible || FindForm() is not { Visible: true } owner || owner.WindowState == FormWindowState.Minimized)
+        {
+            _popup.Close();
+            return;
+        }
+        // Mouse capture reports a click even when focus stays in the editor.
+        // Only close for a press that starts outside both the input and results.
+        if (Control.MouseButtons == MouseButtons.None) return;
+        var cursor = Cursor.Position;
+        if (!RectangleToScreen(ClientRectangle).Contains(cursor) && !_popup.Bounds.Contains(cursor))
+            _popup.Close();
     }
 
     protected override void OnPaint(PaintEventArgs e)
@@ -461,6 +488,8 @@ public class LabzSearchLookup : UserControl
             _disposed = true;
             _timer.Stop();
             _timer.Dispose();
+            _outsideClickMonitor.Stop();
+            _outsideClickMonitor.Dispose();
             _popup.Close();
             _popup.Dispose();
             CancelPending();
