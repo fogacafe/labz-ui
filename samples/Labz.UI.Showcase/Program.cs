@@ -184,7 +184,8 @@ public sealed class ShowcaseForm : Form
             new LabzDatePicker { Width = 270 },
             new LabzDatePicker { Width = 270, ShowTime = true },
             new LabzNumericInput { Width = 270, NumericFormat = LabzNumericFormat.Currency, Value = 1234.56m },
-            new LabzNumericInput { Width = 270, NumericFormat = LabzNumericFormat.Percent, Value = 12.5m }
+            new LabzNumericInput { Width = 270, NumericFormat = LabzNumericFormat.Percent, Value = 12.5m },
+            new LabzNumericInput { Width = 270, NumericFormat = LabzNumericFormat.Number, AllowEmptyInput = true, Value = 100m }
         ]);
         return panel;
     }
