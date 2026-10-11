@@ -27,6 +27,8 @@ public class LabzAppShell : UserControl
     private readonly List<LabzModule> _modules = [];
     private string? _selectedModuleId;
     private bool _sidebarExpanded = true;
+    private LabzTabWorkspace? _workspace;
+    private Func<string, string, Control>? _pageFactory;
 
     public LabzAppShell()
     {
@@ -60,6 +62,24 @@ public class LabzAppShell : UserControl
     {
         get => _sidebarExpanded;
         set { _sidebarExpanded = value; _sidebar.Visible = value; }
+    }
+
+    /// <summary>Optional workspace connected to sidebar navigation.</summary>
+    [Browsable(false)]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public LabzTabWorkspace? Workspace => _workspace;
+
+    /// <summary>Connects navigation to persistent tabs; the factory is called only for new tabs.</summary>
+    public void ConnectWorkspace(LabzTabWorkspace workspace, Func<string, string, Control> pageFactory)
+    {
+        ArgumentNullException.ThrowIfNull(workspace);
+        ArgumentNullException.ThrowIfNull(pageFactory);
+        if (workspace.IsDisposed) throw new ObjectDisposedException(nameof(workspace));
+        _workspace = workspace;
+        _pageFactory = pageFactory;
+        workspace.Dock = DockStyle.Fill;
+        _content.Controls.Clear();
+        _content.Controls.Add(workspace);
     }
 
     public event EventHandler<LabzNavigationEventArgs>? PageRequested;
@@ -96,8 +116,18 @@ public class LabzAppShell : UserControl
         var page = module?.Pages.FirstOrDefault(p => string.Equals(p.Id, pageId, StringComparison.OrdinalIgnoreCase));
         if (module is null || page is null) return false;
         SelectModule(module.Id);
-        PageRequested?.Invoke(this, new LabzNavigationEventArgs(module.Id, page.Id));
+        RequestPage(module, page);
         return true;
+    }
+
+    private void RequestPage(LabzModule module, LabzNavigationPage page)
+    {
+        if (_workspace is not null && _pageFactory is not null)
+        {
+            var key = module.Id + "/" + page.Id;
+            _workspace.Open(key, page.Title, () => _pageFactory(module.Id, page.Id));
+        }
+        PageRequested?.Invoke(this, new LabzNavigationEventArgs(module.Id, page.Id));
     }
 
     private void BuildActivityBar()
@@ -142,8 +172,7 @@ public class LabzAppShell : UserControl
                     button.Height = 36;
                     button.TextAlign = ContentAlignment.MiddleLeft;
                     button.Padding = new Padding(12, 0, 0, 0);
-                    button.Click += (_, _) => PageRequested?.Invoke(this,
-                        new LabzNavigationEventArgs(module.Id, page.Id));
+                    button.Click += (_, _) => RequestPage(module, page);
                     _pageButtons.Controls.Add(button);
                 }
             }

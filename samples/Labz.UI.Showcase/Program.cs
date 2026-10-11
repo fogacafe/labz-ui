@@ -115,9 +115,8 @@ public sealed class ShowcaseForm : Form
         var funds = new LabzModule("funds", "Funds", "F");
         funds.Pages.Add(new LabzNavigationPage("positions", "Positions", "Queries"));
         shell.SetModules([bonds, funds]);
-        var caption = new Label { Text = "Select a page from the sidebar", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleCenter };
-        shell.ContentControls.Add(caption);
-        shell.PageRequested += (_, args) => caption.Text = args.ModuleId + " / " + args.PageId;
+        shell.ConnectWorkspace(new LabzTabWorkspace(), (moduleId, pageId) =>
+            new LabzLabel { Text = moduleId + " / " + pageId, Dock = DockStyle.Top });
         return shell;
     }
 
