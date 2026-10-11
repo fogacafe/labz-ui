@@ -125,13 +125,9 @@ public sealed class ScreenWorkspace : IAsyncDisposable
         _shutdownPending = true;
         try
         {
-            foreach (var screen in _screens.Keys.ToArray())
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                if (CanCloseAsync is { } guard && !await guard(screen, cancellationToken))
-                    return false;
-            }
-            cancellationToken.ThrowIfCancellationRequested();
+            if (!await ScreenCloseApproval.ApproveAllAsync(
+                    _screens.Keys.ToArray(), CanCloseAsync, cancellationToken))
+                return false;
             await DisposeAsync();
             return true;
         }
