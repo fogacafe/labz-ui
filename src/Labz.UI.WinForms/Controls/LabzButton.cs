@@ -59,6 +59,7 @@ public class LabzButton : Button
     }
 
     [Category("Appearance")]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
     public Size ImageSize
     {
         get => _imageSize;
