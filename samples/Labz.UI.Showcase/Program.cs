@@ -287,6 +287,7 @@ public sealed class ShowcaseForm : Form
             new LabzRadioButton { Text = "Weekly" }
         ]);
         panel.Controls.AddRange([
+            new LabzLabel { Text = "Open the dropdown in both themes", Variant = LabzLabelVariant.Caption },
             new LabzSwitch { Checked = true, Text = "Notifications", Width = 230 },
             new LabzCheckBox { Text = "Remember my choice", Checked = true },
             radios, combo
