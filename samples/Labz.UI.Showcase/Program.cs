@@ -42,7 +42,7 @@ public sealed class ShowcaseForm : Form
         var heading = new LabzLabel { Text = "Labz UI", Variant = LabzLabelVariant.Heading, Location = new Point(24, 12) };
         _subtitle.Text = "WinForms controls • interactive component gallery";
         _reviewInfo.Text = "Visual review • use section names in screenshots";
-        _reviewInfo.Location = new Point(26, 100);
+        _reviewInfo.Location = new Point(26, 113);
         _subtitle.Location = new Point(26, 52);
         _theme.Anchor = AnchorStyles.Top | AnchorStyles.Right;
         _theme.Location = new Point(Width - 220, 25);
@@ -50,7 +50,7 @@ public sealed class ShowcaseForm : Form
         var openDemo = new LabzButton { Text = "Open Trading Desk Demo", Width = 210, Height = 36 };
         openDemo.Location = new Point(24, 72);
         openDemo.Click += (_, _) => { using var demo = new TradingDeskDemoForm(); demo.ShowDialog(this); };
-        header.Height = 142;
+        header.Height = 155;
         var openGridDemo = new LabzButton { Text = "Open DataGrid v1", Width = 190, Height = 36 };
         openGridDemo.Location = new Point(246, 72);
         openGridDemo.Click += (_, _) => { using var demo = new DataGridDemoForm(); demo.ShowDialog(this); };
@@ -96,7 +96,7 @@ public sealed class ShowcaseForm : Form
         while (gallery.RowCount <= row)
         {
             gallery.RowCount++;
-            gallery.RowStyles.Add(new RowStyle(SizeType.Absolute, 320));
+            gallery.RowStyles.Add(new RowStyle(SizeType.Absolute, 300));
         }
         var card = new LabzGroupBox
         {
