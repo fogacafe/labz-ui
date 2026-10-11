@@ -10,6 +10,16 @@ public class LabzDataGrid : DataGridView
     private bool _stripedRows = true;
     private Font? _headerFont;
 
+    /// <summary>Optional host-provided formatting callback applied after native formatting.</summary>
+    [Browsable(false)]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public Action<DataGridViewCellFormattingEventArgs>? CellFormattingHandler { get; set; }
+
+    /// <summary>Optional host-provided row styling callback, invoked when a row is pre-painted.</summary>
+    [Browsable(false)]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public Action<DataGridViewRowPrePaintEventArgs>? RowPrePaintHandler { get; set; }
+
     public LabzDataGrid()
     {
         SetStyle(ControlStyles.OptimizedDoubleBuffer, true);
@@ -142,6 +152,18 @@ public class LabzDataGrid : DataGridView
         base.OnFontChanged(e);
         if (ColumnHeadersDefaultCellStyle is not null)
             UpdateHeaderFont();
+    }
+
+    protected override void OnCellFormatting(DataGridViewCellFormattingEventArgs e)
+    {
+        base.OnCellFormatting(e);
+        CellFormattingHandler?.Invoke(e);
+    }
+
+    protected override void OnRowPrePaint(DataGridViewRowPrePaintEventArgs e)
+    {
+        base.OnRowPrePaint(e);
+        RowPrePaintHandler?.Invoke(e);
     }
 
     private void UpdateHeaderFont()
