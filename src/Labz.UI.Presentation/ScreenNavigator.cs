@@ -42,6 +42,34 @@ public sealed class ScreenNavigator(DeferredScreenFactory factory)
         return created;
     }
 
+    /// <summary>Open with typed input; a reused keyed screen retains its original parameters.</summary>
+    public DeferredScreenInstance<TView> Open<TView, TPresenter, TParameters>(
+        TParameters parameters,
+        ScreenOpenPolicy policy = ScreenOpenPolicy.NewInstance,
+        string? key = null,
+        CancellationToken cancellationToken = default)
+        where TView : Form
+        where TPresenter : class, IAsyncScreenPresenter<TView>, IScreenParameters<TParameters>
+    {
+        if (policy == ScreenOpenPolicy.ReuseByKey && string.IsNullOrWhiteSpace(key))
+            throw new ArgumentException("ReuseByKey requires a non-empty key.", nameof(key));
+        cancellationToken.ThrowIfCancellationRequested();
+        if (policy == ScreenOpenPolicy.ReuseByKey)
+        {
+            var id = (typeof(TView), key!);
+            if (_keyed.TryGetValue(id, out var existing))
+            {
+                var screen = (DeferredScreenInstance<TView>)existing;
+                if (!screen.View.IsDisposed) return screen;
+                _keyed.Remove(id);
+            }
+        }
+        var created = factory.Open<TView, TPresenter, TParameters>(parameters, cancellationToken);
+        if (policy == ScreenOpenPolicy.ReuseByKey)
+            _keyed.Add((typeof(TView), key!), created);
+        return created;
+    }
+
     /// <summary>Forget an instance after the host has removed and disposed its tab.</summary>
     public void Forget<TView>(DeferredScreenInstance<TView> instance) where TView : Form
     {
