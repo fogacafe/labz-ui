@@ -8,6 +8,7 @@ namespace Labz.UI.WinForms.Controls;
 public class LabzDataGrid : DataGridView
 {
     private bool _stripedRows = true;
+    private Font? _headerFont;
 
     public LabzDataGrid()
     {
@@ -46,6 +47,34 @@ public class LabzDataGrid : DataGridView
         set => ReadOnly = value;
     }
 
+    /// <summary>Enables or disables multi-row selection while keeping native selection semantics.</summary>
+    [Category("Behavior")]
+    [DefaultValue(false)]
+    public bool MultiRowSelection
+    {
+        get => MultiSelect;
+        set => MultiSelect = value;
+    }
+
+    /// <summary>Gets bound data items represented by the selected rows.</summary>
+    public IReadOnlyList<T> GetSelectedItems<T>()
+        => SelectedRows.Cast<DataGridViewRow>()
+            .OrderBy(row => row.Index)
+            .Select(row => row.DataBoundItem)
+            .OfType<T>()
+            .ToArray();
+
+    /// <summary>Applies a filter to a BindingSource; provider support is determined by its underlying list.</summary>
+    public bool TryApplyFilter(string? filter)
+    {
+        if (DataSource is not BindingSource source || !source.SupportsFiltering) return false;
+        source.Filter = filter;
+        return true;
+    }
+
+    /// <summary>Clears a supported BindingSource filter.</summary>
+    public bool TryClearFilter() => TryApplyFilter(null);
+
     /// <summary>Convenience helper for bound lists; DataSource remains the native binding API.</summary>
     public void Bind<T>(BindingList<T> items) => DataSource = items;
 
@@ -74,7 +103,7 @@ public class LabzDataGrid : DataGridView
         ColumnHeadersDefaultCellStyle.ForeColor = theme.Foreground;
         ColumnHeadersDefaultCellStyle.SelectionBackColor = theme.Background;
         ColumnHeadersDefaultCellStyle.SelectionForeColor = theme.Foreground;
-        ColumnHeadersDefaultCellStyle.Font = new Font(Font, FontStyle.Bold);
+        UpdateHeaderFont();
         RowHeadersDefaultCellStyle.BackColor = theme.Background;
         RowHeadersDefaultCellStyle.ForeColor = theme.Foreground;
         Invalidate();
@@ -84,7 +113,15 @@ public class LabzDataGrid : DataGridView
     {
         base.OnFontChanged(e);
         if (ColumnHeadersDefaultCellStyle is not null)
-            ColumnHeadersDefaultCellStyle.Font = new Font(Font, FontStyle.Bold);
+            UpdateHeaderFont();
+    }
+
+    private void UpdateHeaderFont()
+    {
+        var previous = _headerFont;
+        _headerFont = new Font(Font, FontStyle.Bold);
+        ColumnHeadersDefaultCellStyle.Font = _headerFont;
+        previous?.Dispose();
     }
 
     private void OnThemeChanged(object? sender, EventArgs e)
@@ -96,7 +133,11 @@ public class LabzDataGrid : DataGridView
 
     protected override void Dispose(bool disposing)
     {
-        if (disposing) UiThemeManager.ThemeChanged -= OnThemeChanged;
+        if (disposing)
+        {
+            UiThemeManager.ThemeChanged -= OnThemeChanged;
+            _headerFont?.Dispose();
+        }
         base.Dispose(disposing);
     }
 }
