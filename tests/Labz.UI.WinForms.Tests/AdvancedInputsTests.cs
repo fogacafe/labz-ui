@@ -50,9 +50,29 @@ public class AdvancedInputsTests
         {
             using var input = new LabzDatePicker { ShowTime = true };
             Assert.True(input.ShowTime);
+            Assert.IsAssignableFrom<UserControl>(input);
+            Assert.DoesNotContain(input.Controls.Cast<Control>(), control => control is DateTimePicker);
             input.ShowTime = false;
             Assert.Equal(DateTimePickerFormat.Custom, input.Format);
             Assert.Equal(CultureInfo.CurrentCulture.DateTimeFormat.ShortDatePattern, input.CustomFormat);
+        });
+    }
+
+    [Fact]
+    public void DatePickerClampsValueAndPreservesTime()
+    {
+        RunSta(() =>
+        {
+            using var input = new LabzDatePicker
+            {
+                MinDate = new DateTime(2026, 1, 1),
+                MaxDate = new DateTime(2026, 12, 31, 23, 59, 59),
+                ShowTime = true
+            };
+            input.Value = new DateTime(2026, 5, 12, 14, 30, 0);
+            Assert.Equal(new DateTime(2026, 5, 12, 14, 30, 0), input.Value);
+            input.Value = new DateTime(2027, 1, 1);
+            Assert.Equal(input.MaxDate, input.Value);
         });
     }
 
