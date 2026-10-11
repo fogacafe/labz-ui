@@ -2,6 +2,7 @@ using Labz.UI.Core.Theming;
 using Labz.UI.WinForms.Controls;
 using Labz.UI.WinForms.Layout;
 using Labz.UI.WinForms.Dialogs;
+using Labz.UI.WinForms.Notifications;
 using Labz.UI.Validation;
 
 namespace Labz.UI.Showcase;
@@ -57,6 +58,7 @@ public sealed class ShowcaseForm : Form
 
         AddCard(gallery, "Buttons", CreateButtons());
         AddCard(gallery, "Dialogs", CreateDialogs());
+        AddCard(gallery, "Toast notifications", CreateToasts());
         AddCard(gallery, "Text & validation", CreateTextInputs());
         AddCard(gallery, "Selection", CreateSelection());
         AddCard(gallery, "Search & lookup", CreateLookup());
@@ -110,6 +112,19 @@ public sealed class ShowcaseForm : Form
         };
         iconButton.Click += (_, _) => _status.Text = "Image button clicked";
         panel.Controls.AddRange([iconButton, sizes, variants]);
+        return panel;
+    }
+
+    private Control CreateToasts()
+    {
+        var panel = Stack();
+        var success = new LabzButton { Text = "Success toast", Width = 180 };
+        success.Click += (_, _) => LabzToast.Success(this, "Changes saved successfully!");
+        var warning = new LabzButton { Text = "Warning toast", Width = 180, Variant = LabzButtonVariant.Outline };
+        warning.Click += (_, _) => LabzToast.Warning(this, "Please review your inputs.");
+        var error = new LabzButton { Text = "Error toast", Width = 180, Variant = LabzButtonVariant.Ghost };
+        error.Click += (_, _) => LabzToast.Error(this, "Something went wrong.");
+        panel.Controls.AddRange([error, warning, success]);
         return panel;
     }
 
