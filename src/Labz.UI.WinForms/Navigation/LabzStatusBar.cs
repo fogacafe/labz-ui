@@ -24,6 +24,8 @@ public class LabzStatusBar : UserControl
     private readonly Button _tenantButton = CreateContextButton();
     private LabzUserContext? _userContext;
     private LabzTenantContext? _tenantContext;
+    private readonly List<LabzTenantContext> _availableTenants = [];
+    private bool _tenantSelectorEnabled;
     private string? _userName;
     private string? _tenantName;
     private string? _environmentName;
@@ -49,6 +51,7 @@ public class LabzStatusBar : UserControl
         {
             TenantContextRequested?.Invoke(this, new LabzContextRequestedEventArgs<LabzTenantContext>(_tenantContext));
             TenantRequested?.Invoke(this, EventArgs.Empty);
+            if (_tenantSelectorEnabled) ShowTenantMenu();
         };
         UiThemeManager.ThemeChanged += OnThemeChanged;
         RefreshContext();
@@ -96,6 +99,45 @@ public class LabzStatusBar : UserControl
         set { _tenantContext = value; _tenantName = value?.DisplayName; RefreshContext(); }
     }
 
+    /// <summary>Tenants offered to the user; access control remains with the host.</summary>
+    [Browsable(false)]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public IReadOnlyList<LabzTenantContext> AvailableTenants => _availableTenants.AsReadOnly();
+
+    [Category("Behavior")]
+    [DefaultValue(false)]
+    public bool TenantSelectorEnabled
+    {
+        get => _tenantSelectorEnabled;
+        set => _tenantSelectorEnabled = value;
+    }
+
+    /// <summary>Replaces the list of selectable tenants without changing the active tenant.</summary>
+    public void SetAvailableTenants(IEnumerable<LabzTenantContext> tenants)
+    {
+        ArgumentNullException.ThrowIfNull(tenants);
+        var items = tenants.ToArray();
+        if (items.Any(t => t is null || string.IsNullOrWhiteSpace(t.Id) || string.IsNullOrWhiteSpace(t.DisplayName)) ||
+            items.Select(t => t.Id).Distinct(StringComparer.OrdinalIgnoreCase).Count() != items.Length)
+            throw new ArgumentException("Tenants require non-empty unique IDs and display names.", nameof(tenants));
+        _availableTenants.Clear();
+        _availableTenants.AddRange(items);
+    }
+
+    /// <summary>Requests a tenant change. Returns false when unavailable, canceled or unchanged.</summary>
+    public bool TrySelectTenant(string tenantId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
+        var candidate = _availableTenants.FirstOrDefault(t => string.Equals(t.Id, tenantId, StringComparison.OrdinalIgnoreCase));
+        if (candidate is null || string.Equals(_tenantContext?.Id, candidate.Id, StringComparison.OrdinalIgnoreCase)) return false;
+        var args = new LabzTenantChangingEventArgs(_tenantContext, candidate);
+        TenantChanging?.Invoke(this, args);
+        if (args.Cancel) return false;
+        TenantContext = candidate;
+        TenantChanged?.Invoke(this, new LabzTenantChangedEventArgs(candidate));
+        return true;
+    }
+
     [Category("Appearance")]
     [DefaultValue(null)]
     public string? EnvironmentName
@@ -115,6 +157,29 @@ public class LabzStatusBar : UserControl
 
     /// <summary>Typed tenant context snapshot on tenant button click.</summary>
     public event EventHandler<LabzContextRequestedEventArgs<LabzTenantContext>>? TenantContextRequested;
+
+    /// <summary>Raised before the selected tenant changes; set Cancel to reject the request.</summary>
+    public event EventHandler<LabzTenantChangingEventArgs>? TenantChanging;
+
+    /// <summary>Raised after the active tenant has changed.</summary>
+    public event EventHandler<LabzTenantChangedEventArgs>? TenantChanged;
+
+    private void ShowTenantMenu()
+    {
+        if (_availableTenants.Count == 0) return;
+        using var menu = new ContextMenuStrip();
+        foreach (var tenant in _availableTenants)
+        {
+            var item = new ToolStripMenuItem(tenant.DisplayName)
+            {
+                Checked = string.Equals(tenant.Id, _tenantContext?.Id, StringComparison.OrdinalIgnoreCase),
+                Enabled = !string.Equals(tenant.Id, _tenantContext?.Id, StringComparison.OrdinalIgnoreCase)
+            };
+            item.Click += (_, _) => TrySelectTenant(tenant.Id);
+            menu.Items.Add(item);
+        }
+        menu.Show(_tenantButton, new Point(0, _tenantButton.Height));
+    }
 
     private static Button CreateContextButton() => new()
     {
@@ -179,4 +244,17 @@ public class LabzStatusBar : UserControl
         if (disposing) UiThemeManager.ThemeChanged -= OnThemeChanged;
         base.Dispose(disposing);
     }
+}
+
+/// <summary>Cancelable request to change the selected tenant.</summary>
+public sealed class LabzTenantChangingEventArgs(LabzTenantContext? current, LabzTenantContext requested) : CancelEventArgs
+{
+    public LabzTenantContext? Current { get; } = current;
+    public LabzTenantContext Requested { get; } = requested;
+}
+
+/// <summary>Notification that the selected tenant changed.</summary>
+public sealed class LabzTenantChangedEventArgs(LabzTenantContext tenant) : EventArgs
+{
+    public LabzTenantContext Tenant { get; } = tenant;
 }

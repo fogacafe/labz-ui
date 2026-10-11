@@ -124,8 +124,15 @@ public sealed class ShowcaseForm : Form
         shell.StatusBar.UserContext = new LabzUserContext { Id = "user-demo", DisplayName = "Alex", Email = "alex@example.test" };
         shell.StatusBar.TenantContext = new LabzTenantContext { Id = "desk-trading", DisplayName = "Trading Desk" };
         shell.StatusBar.EnvironmentName = "DEV";
-        shell.StatusBar.TenantContextRequested += (_, _) =>
-            shell.StatusBar.TenantContext = new LabzTenantContext { Id = "desk-research", DisplayName = "Research" };
+        shell.StatusBar.SetAvailableTenants([
+            new LabzTenantContext { Id = "desk-trading", DisplayName = "Trading Desk" },
+            new LabzTenantContext { Id = "desk-research", DisplayName = "Research" }
+        ]);
+        shell.StatusBar.TenantSelectorEnabled = true;
+        shell.StatusBar.TenantChanging += (_, args) =>
+        {
+            // The host may set args.Cancel = true when access or unsaved-work checks fail.
+        };
         shell.StatusBar.UserRequested += (_, _) => MessageBox.Show("User profile requested");
         shell.ConnectWorkspace(new LabzTabWorkspace(), (moduleId, pageId) =>
             new LabzLabel { Text = moduleId + " / " + pageId, Dock = DockStyle.Top });
