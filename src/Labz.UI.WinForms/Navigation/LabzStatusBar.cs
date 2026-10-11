@@ -26,6 +26,8 @@ public class LabzStatusBar : UserControl
     private LabzTenantContext? _tenantContext;
     private readonly List<LabzTenantContext> _availableTenants = [];
     private bool _tenantSelectorEnabled;
+    private bool _isTenantSwitching;
+    private Func<LabzTenantContext?, LabzTenantContext, CancellationToken, Task<bool>>? _tenantSwitchHandler;
     private string? _userName;
     private string? _tenantName;
     private string? _environmentName;
@@ -124,10 +126,23 @@ public class LabzStatusBar : UserControl
         _availableTenants.AddRange(items);
     }
 
+    /// <summary>Host-owned async authorization/loading callback. Return true only after the switch is committed.</summary>
+    [Browsable(false)]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public Func<LabzTenantContext?, LabzTenantContext, CancellationToken, Task<bool>>? TenantSwitchHandler
+    {
+        get => _tenantSwitchHandler;
+        set => _tenantSwitchHandler = value;
+    }
+
+    [Browsable(false)]
+    public bool IsTenantSwitching => _isTenantSwitching;
+
     /// <summary>Requests a tenant change. Returns false when unavailable, canceled or unchanged.</summary>
     public bool TrySelectTenant(string tenantId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
+        if (_isTenantSwitching || _tenantSwitchHandler is not null) return false;
         var candidate = _availableTenants.FirstOrDefault(t => string.Equals(t.Id, tenantId, StringComparison.OrdinalIgnoreCase));
         if (candidate is null || string.Equals(_tenantContext?.Id, candidate.Id, StringComparison.OrdinalIgnoreCase)) return false;
         var args = new LabzTenantChangingEventArgs(_tenantContext, candidate);
@@ -136,6 +151,48 @@ public class LabzStatusBar : UserControl
         TenantContext = candidate;
         TenantChanged?.Invoke(this, new LabzTenantChangedEventArgs(candidate));
         return true;
+    }
+
+    /// <summary>Runs the host's asynchronous switch before committing the visible tenant.</summary>
+    public async Task<bool> TrySelectTenantAsync(string tenantId, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
+        if (_isTenantSwitching || cancellationToken.IsCancellationRequested) return false;
+        var candidate = _availableTenants.FirstOrDefault(t => string.Equals(t.Id, tenantId, StringComparison.OrdinalIgnoreCase));
+        if (candidate is null || string.Equals(_tenantContext?.Id, candidate.Id, StringComparison.OrdinalIgnoreCase)) return false;
+        var args = new LabzTenantChangingEventArgs(_tenantContext, candidate);
+        TenantChanging?.Invoke(this, args);
+        if (args.Cancel) return false;
+
+        var previousStatus = StatusText;
+        _isTenantSwitching = true;
+        _tenantButton.Enabled = false;
+        StatusText = "Switching tenant…";
+        try
+        {
+            // Capture the UI synchronization context; host callback owns transactional semantics.
+            var accepted = _tenantSwitchHandler is null ||
+                await _tenantSwitchHandler(_tenantContext, candidate, cancellationToken);
+            if (!accepted || cancellationToken.IsCancellationRequested) return false;
+            TenantContext = candidate;
+            TenantChanged?.Invoke(this, new LabzTenantChangedEventArgs(candidate));
+            return true;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return false;
+        }
+        catch (Exception ex)
+        {
+            TenantSwitchFailed?.Invoke(this, new LabzTenantSwitchFailedEventArgs(candidate, ex));
+            return false;
+        }
+        finally
+        {
+            StatusText = previousStatus;
+            _isTenantSwitching = false;
+            _tenantButton.Enabled = true;
+        }
     }
 
     [Category("Appearance")]
@@ -164,9 +221,12 @@ public class LabzStatusBar : UserControl
     /// <summary>Raised after the active tenant has changed.</summary>
     public event EventHandler<LabzTenantChangedEventArgs>? TenantChanged;
 
+    /// <summary>Raised when the host switch callback fails; the displayed tenant is unchanged.</summary>
+    public event EventHandler<LabzTenantSwitchFailedEventArgs>? TenantSwitchFailed;
+
     private void ShowTenantMenu()
     {
-        if (_availableTenants.Count == 0) return;
+        if (_availableTenants.Count == 0 || _isTenantSwitching) return;
         using var menu = new ContextMenuStrip();
         foreach (var tenant in _availableTenants)
         {
@@ -175,7 +235,7 @@ public class LabzStatusBar : UserControl
                 Checked = string.Equals(tenant.Id, _tenantContext?.Id, StringComparison.OrdinalIgnoreCase),
                 Enabled = !string.Equals(tenant.Id, _tenantContext?.Id, StringComparison.OrdinalIgnoreCase)
             };
-            item.Click += (_, _) => TrySelectTenant(tenant.Id);
+            item.Click += async (_, _) => await TrySelectTenantAsync(tenant.Id);
             menu.Items.Add(item);
         }
         menu.Show(_tenantButton, new Point(0, _tenantButton.Height));
@@ -257,4 +317,11 @@ public sealed class LabzTenantChangingEventArgs(LabzTenantContext? current, Labz
 public sealed class LabzTenantChangedEventArgs(LabzTenantContext tenant) : EventArgs
 {
     public LabzTenantContext Tenant { get; } = tenant;
+}
+
+/// <summary>Failure during a host-managed asynchronous tenant switch.</summary>
+public sealed class LabzTenantSwitchFailedEventArgs(LabzTenantContext requested, Exception exception) : EventArgs
+{
+    public LabzTenantContext Requested { get; } = requested;
+    public Exception Exception { get; } = exception;
 }
