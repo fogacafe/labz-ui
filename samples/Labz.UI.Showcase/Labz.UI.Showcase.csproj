@@ -6,5 +6,6 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/Labz.UI.WinForms/Labz.UI.WinForms.csproj" />
+    <ProjectReference Include="../Labz.UI.PresentationDemo/Labz.UI.PresentationDemo.csproj" />
   </ItemGroup>
 </Project>
