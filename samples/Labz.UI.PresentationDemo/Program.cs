@@ -12,6 +12,7 @@ internal static class Program
         var services = new ServiceCollection();
         services.AddLabzScreen<TradeForm, TradePresenter>();
         services.AddScoped<ScreenState>();
+        services.AddScoped<IScreenEventBus, ScreenEventBus>();
         services.AddSingleton<ScreenFactory>();
         using var provider = services.BuildServiceProvider(validateScopes: true);
         Application.Run(new DemoShell(provider.GetRequiredService<ScreenFactory>()));
