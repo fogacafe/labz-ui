@@ -41,7 +41,7 @@ public class SearchLookupTests
         {
             using var lookup = new LabzSearchLookup();
             Assert.Equal("Lookup search", lookup.Controls.OfType<TextBox>().Single().AccessibleName);
-            Assert.Equal("Search", lookup.Controls.OfType<Button>().Single().AccessibleName);
+            Assert.Empty(lookup.Controls.OfType<Button>()); // Search icon is custom-painted, not a native button.
         });
     }
 
