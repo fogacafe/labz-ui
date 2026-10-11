@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Drawing;
 using System.Windows.Forms;
 
@@ -20,10 +21,28 @@ public sealed class ScreenLoadingOverlay : UserControl
     private readonly Panel _content = new() { Dock = DockStyle.Fill };
     private IScreenLoadingManager? _manager;
 
+    /// <summary>Apply explicit light/dark colors without coupling to a theme provider.</summary>
+    public void ApplyPalette(Color background, Color foreground, Color accent)
+    {
+        BackColor = background;
+        _content.BackColor = background;
+        _message.BackColor = background;
+        _message.ForeColor = foreground;
+        _spinner.BackColor = background;
+        _spinner.ForeColor = accent;
+        _spinner.Invalidate();
+    }
+
+    public void UseDarkPalette() => ApplyPalette(
+        Color.FromArgb(29, 32, 39), Color.FromArgb(237, 239, 244), Color.FromArgb(127, 165, 255));
+
+    public void UseLightPalette() => ApplyPalette(
+        Color.FromArgb(245, 246, 249), Color.FromArgb(38, 43, 53), Color.FromArgb(70, 110, 205));
+
     public ScreenLoadingOverlay()
     {
         Dock = DockStyle.Fill;
-        BackColor = Color.FromArgb(245, 246, 249);
+        UseLightPalette();
         _content.Controls.Add(_message);
         _content.Controls.Add(_spinner);
         Controls.Add(_content);
