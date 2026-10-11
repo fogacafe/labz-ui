@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using Labz.UI.Core.Theming;
 using Labz.UI.WinForms.Controls;
+using Labz.UI.WinForms.Dialogs;
 using Labz.UI.WinForms.Navigation;
 
 namespace Labz.UI.Showcase;
@@ -43,14 +44,13 @@ public sealed class TradingDeskDemoForm : Form
             return true;
         };
         _shell.StatusBar.TenantSwitchFailed += (_, e) =>
-            MessageBox.Show(this, e.Exception.Message, "Tenant switch failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            LabzMessageBox.Show(e.Exception.Message, "Tenant switch failed", LabzDialogKind.Error, owner: this);
         _shell.StatusBar.UserRequested += (_, _) =>
-            MessageBox.Show(this, "User management belongs to the host application.", "User");
+            LabzMessageBox.Show("User management belongs to the host application.", "User", owner: this);
         _workspace.PageClosing += (_, e) =>
         {
             if (e.PageId != "bonds/orders") return;
-            if (MessageBox.Show(this, "Discard the order entry draft?", "Unsaved changes",
-                MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+            if (LabzMessageBox.Confirm("Discard the order entry draft?", "Unsaved changes", this) != DialogResult.Yes)
                 e.Cancel = true;
         };
         _shell.NavigateTo("bonds", "trades");
