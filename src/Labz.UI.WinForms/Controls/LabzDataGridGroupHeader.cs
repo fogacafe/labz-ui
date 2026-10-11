@@ -16,6 +16,7 @@ public sealed class LabzDataGridGroupHeader : UserControl
     public event EventHandler? ExpandToggleRequested;
 
     [Category("Appearance")]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
     public string GroupTitle
     {
         get => _title.Text;
@@ -23,6 +24,7 @@ public sealed class LabzDataGridGroupHeader : UserControl
     }
 
     [Category("Appearance")]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
     public string GroupSummary
     {
         get => _summary.Text;
