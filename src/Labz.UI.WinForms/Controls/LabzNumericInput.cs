@@ -66,6 +66,7 @@ public class LabzNumericInput : UserControl
     }
 
     [Category("Behavior")]
+    [DefaultValue(typeof(decimal), "-79228162514264337593543950335")]
     public decimal Minimum
     {
         get => _minimum;
@@ -73,6 +74,7 @@ public class LabzNumericInput : UserControl
     }
 
     [Category("Behavior")]
+    [DefaultValue(typeof(decimal), "79228162514264337593543950335")]
     public decimal Maximum
     {
         get => _maximum;
