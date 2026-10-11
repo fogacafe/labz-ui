@@ -1,7 +1,5 @@
 using System.ComponentModel;
 using System.Globalization;
-using System.Drawing.Drawing2D;
-using Labz.UI.Rendering.Drawing;
 using Labz.UI.Core.Theming;
 
 namespace Labz.UI.WinForms.Controls;
@@ -15,14 +13,9 @@ public class LabzNumericInput : NumericUpDown
     private CultureInfo _culture = CultureInfo.CurrentCulture;
     private bool _updatingText;
     private bool _allowEmptyInput;
-    private bool _hovered;
-    private bool _focused;
-    private const int ActionWidth = 27;
 
     public LabzNumericInput()
     {
-        SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
-        BorderStyle = BorderStyle.None;
         Height = 42;
         DecimalPlaces = 2;
         ThousandsSeparator = true;
@@ -108,11 +101,6 @@ public class LabzNumericInput : NumericUpDown
             Value = Math.Clamp(parsed, Minimum, Maximum);
         UpdateEditText();
     }
-
-    protected override void OnMouseEnter(EventArgs e) { base.OnMouseEnter(e); _hovered = true; Invalidate(); }
-    protected override void OnMouseLeave(EventArgs e) { base.OnMouseLeave(e); _hovered = false; Invalidate(); }
-    protected override void OnEnter(EventArgs e) { base.OnEnter(e); _focused = true; Invalidate(); }
-    protected override void OnLeave(EventArgs e) { base.OnLeave(e); _focused = false; Invalidate(); }
 
     private void ApplyTheme()
     {
