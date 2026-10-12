@@ -450,7 +450,6 @@ public class LabzSearchLookup : UserControl
         BackColor = theme.Surface;
         _query.BackColor = theme.Surface;
         _query.ForeColor = theme.Foreground;
-        _popup.BackColor = theme.Surface;
         _popupPanel.BackColor = theme.Surface;
         _status.BackColor = theme.Surface;
         _status.ForeColor = theme.Foreground;
