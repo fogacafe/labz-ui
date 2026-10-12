@@ -107,7 +107,23 @@ public sealed class TradingDeskDemoForm : Form
         }
         else
         {
-            var form = new Panel { Dock = DockStyle.Fill, Padding = new Padding(20), BackColor = theme.Surface };
+            // Form pages use a compact section; data pages retain a full-size grid.
+            // The host canvas remains full-size, but the form surface does not.
+            surface.BackColor = theme.Background;
+            surface.Padding = new Padding(0);
+            var section = new Panel
+            {
+                Dock = DockStyle.Top, Height = 168,
+                BackColor = theme.Surface, Padding = new Padding(20),
+                MaximumSize = new Size(760, 0)
+            };
+            var sectionTitle = new Label
+            {
+                Text = pageId == "orders" ? "Instrument details" : "Import source",
+                Dock = DockStyle.Top, Height = 30,
+                ForeColor = theme.Foreground,
+                Font = new Font(SystemFonts.MessageBoxFont.FontFamily, 11f, FontStyle.Bold)
+            };
             var input = new LabzTextBox
             {
                 Dock = DockStyle.Top, Height = 54,
@@ -116,11 +132,13 @@ public sealed class TradingDeskDemoForm : Form
             var note = new LabzLabel
             {
                 Text = pageId == "orders" ? "Draft remains open until the tab is closed." : "Import preview (demonstration only).",
-                Variant = LabzLabelVariant.Muted, Dock = DockStyle.Top, Height = 42
+                Variant = LabzLabelVariant.Muted, Dock = DockStyle.Top, Height = 32
             };
-            form.Controls.Add(note);
-            form.Controls.Add(input);
-            surface.Controls.Add(form);
+            // Reverse docking insertion order so the title appears above the input.
+            section.Controls.Add(note);
+            section.Controls.Add(input);
+            section.Controls.Add(sectionTitle);
+            surface.Controls.Add(section);
         }
         return page;
     }
