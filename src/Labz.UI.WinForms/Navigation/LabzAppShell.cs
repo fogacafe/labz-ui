@@ -259,7 +259,7 @@ public class LabzAppShell : UserControl
         var theme = UiThemeManager.Current;
         foreach (Button button in _moduleButtons.Controls.OfType<Button>())
             button.BackColor = string.Equals(button.Tag as string, _selectedModuleId, StringComparison.OrdinalIgnoreCase)
-                ? theme.Primary : theme.Surface;
+                ? theme.SelectionSurface : theme.Background;
     }
 
     private void ApplyTheme()
@@ -268,28 +268,28 @@ public class LabzAppShell : UserControl
         var theme = UiThemeManager.Current;
         BackColor = theme.Background;
         _content.BackColor = theme.Background;
-        _sidebar.BackColor = theme.Surface;
-        _sidebarDivider.BackColor = ControlPaint.Dark(theme.Surface, 0.08f);
+        _sidebar.BackColor = theme.SidebarSurface;
+        _sidebarDivider.BackColor = theme.SubtleBorder;
         _activityBar.BackColor = theme.Background;
         _moduleButtons.BackColor = theme.Background;
-        _pageButtons.BackColor = theme.Surface;
-        _moduleTitle.BackColor = theme.Surface;
+        _pageButtons.BackColor = theme.SidebarSurface;
+        _moduleTitle.BackColor = theme.SidebarSurface;
         _moduleTitle.ForeColor = theme.Foreground;
         foreach (Button button in _moduleButtons.Controls.OfType<Button>())
         {
             button.ForeColor = theme.Foreground;
             button.FlatAppearance.BorderSize = 0;
-            button.FlatAppearance.MouseOverBackColor = ControlPaint.Light(theme.Surface, 0.08f);
+            button.FlatAppearance.MouseOverBackColor = theme.SelectionSurface;
         }
         foreach (Control control in _pageButtons.Controls)
         {
-            control.ForeColor = theme.Foreground;
-            control.BackColor = theme.Surface;
+            control.ForeColor = control is Label ? theme.MutedForeground : theme.Foreground;
+            control.BackColor = theme.SidebarSurface;
             if (control is Button button)
             {
                 button.FlatAppearance.BorderSize = 0;
                 button.FlatAppearance.MouseOverBackColor = ControlPaint.Light(theme.Surface, 0.08f);
-                button.FlatAppearance.MouseDownBackColor = ControlPaint.Light(theme.Surface, 0.15f);
+                button.FlatAppearance.MouseDownBackColor = theme.SelectionSurface;
             }
         }
         UpdateActivitySelection();
