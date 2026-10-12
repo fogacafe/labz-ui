@@ -23,7 +23,7 @@ internal sealed class LabzRoundedPopup : IDisposable
         // Reserve a physical pixel outside the hosted control: drawing on its
         // Paint event alone is covered by child ListBox/DataGridView windows.
         _popup.Padding = new Padding(1);
-        _popup.BackColor = UiThemeManager.Current.Border;
+        _popup.BackColor = PopupBorderColor();
         _popup.Resize += Refresh;
         _popup.Opened += Refresh;
         _popup.Layout += Refresh;
@@ -34,7 +34,7 @@ internal sealed class LabzRoundedPopup : IDisposable
     private void Refresh(object? sender, EventArgs e)
     {
         if (_disposed || _popup.IsDisposed || _content.IsDisposed) return;
-        _popup.BackColor = UiThemeManager.Current.Border;
+        _popup.BackColor = PopupBorderColor();
         var radius = Math.Max(2, UiThemeManager.Current.CornerRadius);
         SetRoundedRegion(_popup, radius);
         SetRoundedRegion(_content, radius);
@@ -51,6 +51,17 @@ internal sealed class LabzRoundedPopup : IDisposable
                 }
             }));
         }
+    }
+
+    private static Color PopupBorderColor()
+    {
+        var theme = UiThemeManager.Current;
+        // A subtle outline between the popup surface and the stronger input focus ring.
+        const double strength = 0.55;
+        return Color.FromArgb(
+            (int)Math.Round(theme.Surface.R * (1 - strength) + theme.Border.R * strength),
+            (int)Math.Round(theme.Surface.G * (1 - strength) + theme.Border.G * strength),
+            (int)Math.Round(theme.Surface.B * (1 - strength) + theme.Border.B * strength));
     }
 
     private static void SetRoundedRegion(Control control, int radius)
