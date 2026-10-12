@@ -82,8 +82,6 @@ internal static class PrivateBondsDemo
             if (i == 0)
             {
                 card.Controls.Add(side, 1, row);
-                // Keep field indexes aligned with the domain fields for validation below.
-                editors.Add(new LabzTextBox { Text = side.Text });
                 continue;
             }
             var input = new LabzTextBox { Text = value, Dock = DockStyle.Fill,
@@ -98,9 +96,9 @@ internal static class PrivateBondsDemo
             AutoSize = true, Padding = new Padding(12, 8, 0, 0) };
         save.Click += (_, _) =>
         {
-            if (!decimal.TryParse(editors[3].Text, out var quantity) || quantity <= 0 ||
-                !decimal.TryParse(editors[4].Text, out var price) || price <= 0 ||
-                string.IsNullOrWhiteSpace(editors[1].Text) ||
+            if (!decimal.TryParse(editors[2].Text, out var quantity) || quantity <= 0 ||
+                !decimal.TryParse(editors[3].Text, out var price) || price <= 0 ||
+                string.IsNullOrWhiteSpace(editors[0].Text) ||
                 (side.Text is not ("BUY" or "SELL")))
             {
                 message.Text = "Check side, instrument, quantity and price.";
@@ -108,7 +106,7 @@ internal static class PrivateBondsDemo
             }
             var next = new Trade(trade?.Id ?? (Trades.Max(t => t.Id) + 1),
                 editors[1].Text.Trim(), editors[2].Text.Trim(), side.Text,
-                quantity, price, editors[5].Text.Trim(), "DRAFT");
+                quantity, price, editors[4].Text.Trim(), "DRAFT");
             if (trade is null) Trades.Add(next);
             else
             {
