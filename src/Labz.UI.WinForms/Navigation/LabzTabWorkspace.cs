@@ -222,17 +222,17 @@ public class LabzTabWorkspace : UserControl
         var theme = UiThemeManager.Current;
         BackColor = theme.Background;
         _host.BackColor = theme.Background;
-        _tabStrip.BackColor = theme.Surface;
+        _tabStrip.BackColor = theme.SidebarSurface;
         foreach (var page in _pages.Values)
         {
             var selected = page.Id == _activePageId;
-            page.Tab.BackColor = selected ? theme.Background : theme.Surface;
+            page.Tab.BackColor = selected ? theme.ElevatedSurface : theme.SidebarSurface;
             foreach (var button in new[] { page.SelectButton, page.CloseButton })
             {
                 button.BackColor = page.Tab.BackColor;
-                button.ForeColor = theme.Foreground;
+                button.ForeColor = selected ? theme.Foreground : theme.MutedForeground;
                 button.FlatAppearance.BorderSize = 0;
-                button.FlatAppearance.MouseOverBackColor = ControlPaint.Light(theme.Surface, 0.10f);
+                button.FlatAppearance.MouseOverBackColor = theme.SelectionSurface;
             }
         }
         Invalidate(true);
