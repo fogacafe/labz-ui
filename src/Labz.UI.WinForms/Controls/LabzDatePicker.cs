@@ -18,6 +18,9 @@ public class LabzDatePicker : UserControl
     private readonly Label[] _weekdays = new Label[7];
     private readonly Button[] _days = new Button[42];
     private DateTime _visibleMonth;
+    private CalendarView _calendarView = CalendarView.Days;
+    private int _yearPageStart;
+    private enum CalendarView { Days, Months, Years }
     private readonly ToolStripDropDown _popup = new() { AutoClose = true, Padding = Padding.Empty, Margin = Padding.Empty };
     private readonly List<ScrollableControl> _scrollParents = [];
     private Form? _owner;
@@ -38,8 +41,10 @@ public class LabzDatePicker : UserControl
         _visibleMonth = new DateTime(_value.Year, _value.Month, 1);
         _previous.FlatAppearance.BorderSize = 0;
         _next.FlatAppearance.BorderSize = 0;
-        _previous.Click += (_, _) => ChangeMonth(-1);
-        _next.Click += (_, _) => ChangeMonth(1);
+        _previous.Click += (_, _) => Navigate(-1);
+        _next.Click += (_, _) => Navigate(1);
+        _monthTitle.Cursor = Cursors.Hand;
+        _monthTitle.Click += (_, _) => { _calendarView = _calendarView == CalendarView.Days ? CalendarView.Months : CalendarView.Years; RenderCalendar(); };
         _calendar.Controls.AddRange([_previous, _next, _monthTitle]);
         for (var i = 0; i < 7; i++)
         {
@@ -179,6 +184,7 @@ public class LabzDatePicker : UserControl
         if (_popup.Visible) { _popup.Close(); return; }
         CommitText();
         _visibleMonth = new DateTime(Value.Year, Value.Month, 1);
+        _calendarView = CalendarView.Days;
         RenderCalendar();
         AttachOwner();
         // Use control-relative placement, never absolute screen coordinates.
@@ -186,17 +192,44 @@ public class LabzDatePicker : UserControl
         Invalidate();
     }
 
-    private void ChangeMonth(int delta)
+    private void Navigate(int delta)
     {
-        if ((delta < 0 && _visibleMonth.Year == 1 && _visibleMonth.Month == 1) ||
-            (delta > 0 && _visibleMonth.Year == 9999 && _visibleMonth.Month == 12)) return;
-        _visibleMonth = _visibleMonth.AddMonths(delta);
+        if (_calendarView == CalendarView.Years)
+        {
+            _yearPageStart = Math.Clamp(_yearPageStart + delta * 12, 1, 9988);
+        }
+        else if (_calendarView == CalendarView.Months)
+        {
+            var year = Math.Clamp(_visibleMonth.Year + delta, 1, 9999);
+            _visibleMonth = new DateTime(year, _visibleMonth.Month, 1);
+        }
+        else
+        {
+            if ((delta < 0 && _visibleMonth.Year == 1 && _visibleMonth.Month == 1) ||
+                (delta > 0 && _visibleMonth.Year == 9999 && _visibleMonth.Month == 12)) return;
+            _visibleMonth = _visibleMonth.AddMonths(delta);
+        }
         RenderCalendar();
     }
 
     private void OnDayClicked(object? sender, EventArgs e)
     {
-        if (sender is not Button { Tag: DateTime date }) return;
+        if (sender is not Button button) return;
+        if (_calendarView == CalendarView.Years && button.Tag is int year)
+        {
+            _visibleMonth = new DateTime(year, _visibleMonth.Month, 1);
+            _calendarView = CalendarView.Months;
+            RenderCalendar();
+            return;
+        }
+        if (_calendarView == CalendarView.Months && button.Tag is int month)
+        {
+            _visibleMonth = new DateTime(_visibleMonth.Year, month, 1);
+            _calendarView = CalendarView.Days;
+            RenderCalendar();
+            return;
+        }
+        if (button.Tag is not DateTime date) return;
         Value = date.Date.Add(ShowTime ? Value.TimeOfDay : TimeSpan.Zero);
         _popup.Close();
         _editor.Focus();
@@ -207,7 +240,14 @@ public class LabzDatePicker : UserControl
         var theme = UiThemeManager.Current;
         _calendar.BackColor = theme.Surface;
         _popup.BackColor = theme.Surface;
-        _monthTitle.Text = _visibleMonth.ToString("Y", CultureInfo.CurrentCulture);
+        if (_calendarView == CalendarView.Years && _yearPageStart == 0)
+            _yearPageStart = Math.Clamp((_visibleMonth.Year - 1) / 12 * 12 + 1, 1, 9988);
+        _monthTitle.Text = _calendarView switch
+        {
+            CalendarView.Days => _visibleMonth.ToString("Y", CultureInfo.CurrentCulture),
+            CalendarView.Months => _visibleMonth.Year.ToString(CultureInfo.CurrentCulture),
+            _ => $"{_yearPageStart} – {Math.Min(9999, _yearPageStart + 11)}"
+        };
         _monthTitle.ForeColor = theme.Foreground;
         _monthTitle.BackColor = theme.Surface;
         _monthTitle.Bounds = new Rectangle(38, 8, 204, 30);
@@ -218,6 +258,34 @@ public class LabzDatePicker : UserControl
             arrow.BackColor = theme.Surface;
             arrow.ForeColor = theme.Foreground;
         }
+        if (_calendarView != CalendarView.Days)
+        {
+            foreach (var label in _weekdays) label.Visible = false;
+            for (var i = 0; i < _days.Length; i++)
+            {
+                var button = _days[i];
+                button.Visible = i < 12;
+                if (i >= 12) continue;
+                var isMonth = _calendarView == CalendarView.Months;
+                var value = isMonth ? i + 1 : _yearPageStart + i;
+                var selected = isMonth
+                    ? _visibleMonth.Year == Value.Year && value == Value.Month
+                    : value == Value.Year;
+                button.Bounds = new Rectangle(8 + (i % 3) * 90, 58 + (i / 3) * 54, 84, 46);
+                button.Tag = value;
+                button.Text = isMonth
+                    ? CultureInfo.CurrentCulture.DateTimeFormat.AbbreviatedMonthNames[i]
+                    : value.ToString(CultureInfo.CurrentCulture);
+                button.Enabled = isMonth
+                    ? new DateTime(_visibleMonth.Year, value, 1) <= MaxDate.Date &&
+                      new DateTime(_visibleMonth.Year, value, DateTime.DaysInMonth(_visibleMonth.Year, value)) >= MinDate.Date
+                    : value >= MinDate.Year && value <= MaxDate.Year;
+                button.BackColor = selected ? theme.Primary : theme.Surface;
+                button.ForeColor = selected ? Color.White : theme.Foreground;
+            }
+            return;
+        }
+        foreach (var label in _weekdays) label.Visible = true;
         var firstDay = CultureInfo.CurrentCulture.DateTimeFormat.FirstDayOfWeek;
         for (var col = 0; col < 7; col++)
         {
@@ -235,6 +303,7 @@ public class LabzDatePicker : UserControl
             var available = i <= (DateTime.MaxValue - firstCell).TotalDays;
             var day = available ? firstCell.AddDays(i) : DateTime.MaxValue;
             var button = _days[i];
+            button.Visible = true;
             button.Bounds = new Rectangle(7 + (i % 7) * 38, 74 + (i / 7) * 34, 38, 32);
             button.Tag = day;
             button.Text = day.Day.ToString(CultureInfo.CurrentCulture);
