@@ -18,6 +18,7 @@ public class LabzComboBox : UserControl
     private bool _showSearchButton;
     private bool _hovered;
     private readonly ListBox _list = new() { BorderStyle = BorderStyle.None, IntegralHeight = false, DrawMode = DrawMode.OwnerDrawFixed, ItemHeight = 28 };
+    private LabzRoundedPopup? _roundedPopup;
     private readonly ToolStripDropDown _popup = new() { AutoClose = true, Padding = Padding.Empty };
     private readonly LabzPopupLifecycle _popupLifecycle;
     private readonly Label _selectionDisplay = new() { AutoEllipsis = true, TextAlign = ContentAlignment.MiddleLeft, Cursor = Cursors.Hand };
@@ -40,6 +41,7 @@ public class LabzComboBox : UserControl
         _list.Click += (_, _) => CommitSelection();
         _list.KeyDown += (_, e) => { if (e.KeyCode == Keys.Enter) { CommitSelection(); e.Handled = true; } else if (e.KeyCode == Keys.Escape) { _popup.Close(); Focus(); e.Handled = true; } };
         _popup.Items.Add(new ToolStripControlHost(_list) { AutoSize = false, Margin = Padding.Empty, Padding = Padding.Empty });
+        _roundedPopup = new LabzRoundedPopup(_popup, _list);
         _popup.Closed += (_, _) => Invalidate();
         _combo.SelectedIndexChanged += (_, e) => { UpdateSelectionDisplay(); SelectedIndexChanged?.Invoke(this, e); };
         _combo.TextChanged += (_, _) => { UpdateSelectionDisplay(); OnTextChanged(EventArgs.Empty); };
@@ -367,6 +369,7 @@ public class LabzComboBox : UserControl
             _popupLifecycle.Dispose();
             UiThemeManager.ThemeChanged -= OnThemeChanged;
             _popup.Close();
+            _roundedPopup?.Dispose();
             _popup.Dispose();
         }
         base.Dispose(disposing);
