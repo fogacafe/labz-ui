@@ -28,6 +28,7 @@ public class LabzAppShell : UserControl
     };
     private readonly List<LabzModule> _modules = [];
     private string? _selectedModuleId;
+    private string? _selectedPageId;
     private bool _sidebarExpanded = true;
     private LabzTabWorkspace? _workspace;
     private Func<string, string, Control>? _pageFactory;
@@ -180,6 +181,9 @@ public class LabzAppShell : UserControl
 
     private void RequestPage(LabzModule module, LabzNavigationPage page)
     {
+        _selectedModuleId = module.Id;
+        _selectedPageId = page.Id;
+        UpdatePageSelection();
         if (_workspace is not null && _pageFactory is not null)
         {
             var key = module.Id + "/" + page.Id;
@@ -229,6 +233,7 @@ public class LabzAppShell : UserControl
                 {
                     var button = CreateButton(page.Title, 190);
                     button.Height = 36;
+                    button.Tag = page.Id;
                     button.TextAlign = ContentAlignment.MiddleLeft;
                     button.Padding = new Padding(16, 0, 0, 0);
                     button.AccessibleName = module.Title + " / " + page.Title;
@@ -237,6 +242,7 @@ public class LabzAppShell : UserControl
                 }
             }
             ApplyTheme();
+            UpdatePageSelection();
         }
         finally { _pageButtons.ResumeLayout(); }
     }
@@ -252,6 +258,19 @@ public class LabzAppShell : UserControl
         var width = Math.Max(fallback, panel.ClientSize.Width - 8);
         foreach (Control control in panel.Controls)
             control.Width = width;
+    }
+
+    private void UpdatePageSelection()
+    {
+        var theme = UiThemeManager.Current;
+        foreach (var button in _pageButtons.Controls.OfType<Button>())
+        {
+            var selected = string.Equals(button.Tag as string, _selectedPageId, StringComparison.OrdinalIgnoreCase);
+            button.BackColor = selected ? theme.SelectionSurface : theme.SidebarSurface;
+            button.ForeColor = selected ? theme.Foreground : theme.MutedForeground;
+            button.FlatAppearance.BorderSize = 0;
+            button.FlatAppearance.MouseOverBackColor = theme.SelectionSurface;
+        }
     }
 
     private void UpdateActivitySelection()
@@ -293,6 +312,7 @@ public class LabzAppShell : UserControl
             }
         }
         UpdateActivitySelection();
+        UpdatePageSelection();
         Invalidate(true);
     }
 
