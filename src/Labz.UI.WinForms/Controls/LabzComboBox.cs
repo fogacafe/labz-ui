@@ -43,6 +43,7 @@ public class LabzComboBox : UserControl
         _popup.Items.Add(new ToolStripControlHost(_list) { AutoSize = false, Margin = Padding.Empty, Padding = Padding.Empty });
         _roundedPopup = new LabzRoundedPopup(_popup, _list);
         _popup.Closed += (_, _) => Invalidate();
+        Leave += (_, _) => Invalidate();
         _combo.SelectedIndexChanged += (_, e) => { UpdateSelectionDisplay(); SelectedIndexChanged?.Invoke(this, e); };
         _combo.TextChanged += (_, _) => { UpdateSelectionDisplay(); OnTextChanged(EventArgs.Empty); };
         _searchButton = new Button
@@ -65,6 +66,8 @@ public class LabzComboBox : UserControl
         TabStop = true;
         _combo.Enter += (_, _) => Invalidate();
         _combo.Leave += (_, _) => Invalidate();
+        _selectionDisplay.Enter += (_, _) => Invalidate();
+        _selectionDisplay.Leave += (_, _) => Invalidate();
         _combo.MouseEnter += (_, _) => { _hovered = true; Invalidate(); };
         _combo.MouseLeave += (_, _) => { _hovered = false; Invalidate(); };
         Controls.Add(_combo);
@@ -167,6 +170,12 @@ public class LabzComboBox : UserControl
     protected override void OnEnter(EventArgs e)
     {
         base.OnEnter(e);
+        Invalidate();
+    }
+
+    protected override void OnLeave(EventArgs e)
+    {
+        base.OnLeave(e);
         Invalidate();
     }
 
@@ -303,7 +312,8 @@ public class LabzComboBox : UserControl
         e.Graphics.Clear(Parent?.BackColor ?? theme.Background);
         using var path = RoundedRectangles.Create(new Rectangle(1, 1, Math.Max(1, Width - 3), Math.Max(1, Height - 3)), theme.CornerRadius);
         using var fill = new SolidBrush(theme.Surface);
-        using var border = new Pen(Focused || _popup.Visible ? theme.Primary : _hovered ? ControlPaint.Dark(theme.Border) : theme.Border, Focused || _popup.Visible ? 2 : 1);
+        var hasFocus = ContainsFocus || _popup.Visible;
+        using var border = new Pen(hasFocus ? theme.Primary : _hovered ? ControlPaint.Dark(theme.Border) : theme.Border, hasFocus ? 2 : 1);
         e.Graphics.FillPath(fill, path);
         e.Graphics.DrawPath(border, path);
         var actionWidth = _showSearchButton ? 36 : 0;
