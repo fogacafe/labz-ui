@@ -58,13 +58,42 @@ public sealed class TradingDeskDemoForm : Form
 
     private static Control CreatePage(string moduleId, string pageId)
     {
-        var panel = new Panel { Dock = DockStyle.Fill, Padding = new Padding(24), AutoScroll = true };
-        var heading = new LabzLabel
+        var theme = UiThemeManager.Current;
+        var moduleTitle = moduleId == "bonds" ? "Public Bonds" : "Funds";
+        var pageTitle = pageId switch
         {
-            Text = (moduleId == "bonds" ? "Public Bonds" : "Funds") + " / " + pageId,
-            Variant = LabzLabelVariant.Heading, Dock = DockStyle.Top, Height = 48
+            "trades" => "Trade Blotter",
+            "orders" => "Order Entry",
+            "import" => "Bulk Import",
+            "positions" => "Positions",
+            "settlements" => "Settlements",
+            _ => pageId
         };
-        panel.Controls.Add(heading);
+
+        // Separate the page chrome from the content: the header never overlaps a docked grid.
+        var page = new Panel { Dock = DockStyle.Fill, BackColor = theme.Background, Padding = new Padding(24, 20, 24, 24) };
+        var header = new Panel { Dock = DockStyle.Top, Height = 88, BackColor = theme.Background };
+        var breadcrumb = new Label
+        {
+            Text = moduleTitle.ToUpperInvariant() + "  /  " + pageTitle.ToUpperInvariant(),
+            Dock = DockStyle.Top, Height = 23, ForeColor = theme.MutedForeground,
+            Font = new Font(SystemFonts.MessageBoxFont.FontFamily, 9f, FontStyle.Bold)
+        };
+        var title = new Label
+        {
+            Text = pageTitle, Dock = DockStyle.Top, Height = 39,
+            ForeColor = theme.Foreground, Font = new Font(SystemFonts.MessageBoxFont.FontFamily, 19f, FontStyle.Bold)
+        };
+        header.Controls.Add(title);
+        header.Controls.Add(breadcrumb);
+
+        var surface = new Panel
+        {
+            Dock = DockStyle.Fill, BackColor = theme.Surface,
+            Padding = new Padding(1)
+        };
+        page.Controls.Add(surface);
+        page.Controls.Add(header);
 
         if (pageId is "trades" or "positions" or "settlements")
         {
@@ -74,14 +103,14 @@ public sealed class TradingDeskDemoForm : Form
                 new DemoTrade(1002, "RELEASED", 98000m),
                 new DemoTrade(1003, "PENDING", 72000m)
             ]);
-            panel.Controls.Add(grid);
-            grid.BringToFront();
+            surface.Controls.Add(grid);
         }
         else
         {
+            var form = new Panel { Dock = DockStyle.Fill, Padding = new Padding(20), BackColor = theme.Surface };
             var input = new LabzTextBox
             {
-                Dock = DockStyle.Top, Height = 54, Width = 340,
+                Dock = DockStyle.Top, Height = 54,
                 PlaceholderText = pageId == "orders" ? "Enter instrument ticker" : "Paste import reference"
             };
             var note = new LabzLabel
@@ -89,12 +118,11 @@ public sealed class TradingDeskDemoForm : Form
                 Text = pageId == "orders" ? "Draft remains open until the tab is closed." : "Import preview (demonstration only).",
                 Variant = LabzLabelVariant.Muted, Dock = DockStyle.Top, Height = 42
             };
-            panel.Controls.Add(note);
-            panel.Controls.Add(input);
-            input.BringToFront();
+            form.Controls.Add(note);
+            form.Controls.Add(input);
+            surface.Controls.Add(form);
         }
-        heading.BringToFront();
-        return panel;
+        return page;
     }
 
     private sealed record DemoTrade(int Ticket, string Status, decimal Amount);
