@@ -67,14 +67,28 @@ internal static class PrivateBondsDemo
             ("Quantity", trade?.Quantity.ToString() ?? ""),
             ("Unit price", trade?.UnitPrice.ToString("0.00") ?? ""),
             ("Counterparty", trade?.Counterparty ?? ""),
+            ("Trade date (dd/MM/yyyy)", DateTime.Today.ToString("dd/MM/yyyy")),
+            ("Settlement (dd/MM/yyyy)", DateTime.Today.AddDays(2).ToString("dd/MM/yyyy")),
+            ("Maturity (dd/MM/yyyy)", new DateTime(2030, 12, 15).ToString("dd/MM/yyyy")),
+            ("Rate (% p.a.)", "12,50"),
         };
         var editors = new List<LabzTextBox>();
+        var sectionRows = new Dictionary<int, string> { [0] = "OPERATION", [2] = "INSTRUMENT", [5] = "SETTLEMENT & TERMS" };
         var side = new LabzComboBox { Dock = DockStyle.Fill, Margin = new Padding(6, 5, 6, 5) };
         side.Items.AddRange(["BUY", "SELL"]);
         side.SelectedIndex = trade?.Side == "SELL" ? 1 : 0;
         for (var i = 0; i < fields.Length; i++)
         {
             var (label, value) = fields[i];
+            if (sectionRows.TryGetValue(i, out var sectionName))
+            {
+                var sectionRow = card.RowCount++;
+                card.RowStyles.Add(new RowStyle(SizeType.Absolute, 44));
+                var heading = new LabzLabel { Text = sectionName, Variant = LabzLabelVariant.Muted,
+                    Dock = DockStyle.Fill, AutoSize = false, TextAlign = ContentAlignment.BottomLeft };
+                card.Controls.Add(heading, 0, sectionRow);
+                card.SetColumnSpan(heading, 2);
+            }
             var row = card.RowCount++;
             card.RowStyles.Add(new RowStyle(SizeType.Absolute, 60));
             card.Controls.Add(new LabzLabel { Text = label, Variant = LabzLabelVariant.Body,
@@ -89,6 +103,23 @@ internal static class PrivateBondsDemo
             editors.Add(input);
             card.Controls.Add(input, 1, row);
         }
+        var summaryRow = card.RowCount++;
+        card.RowStyles.Add(new RowStyle(SizeType.Absolute, 72));
+        var summary = new LabzLabel { Text = "", Variant = LabzLabelVariant.Heading,
+            Dock = DockStyle.Fill, AutoSize = false, TextAlign = ContentAlignment.MiddleLeft };
+        card.Controls.Add(summary, 0, summaryRow);
+        card.SetColumnSpan(summary, 2);
+        void RefreshSummary()
+        {
+            summary.Text = decimal.TryParse(editors[2].Text, out var qty) &&
+                decimal.TryParse(editors[3].Text, out var pu)
+                ? $"FINANCIAL AMOUNT     {(qty * pu):N2}  (illustrative)"
+                : "FINANCIAL AMOUNT     —";
+        }
+        editors[2].TextChanged += (_, _) => RefreshSummary();
+        editors[3].TextChanged += (_, _) => RefreshSummary();
+        RefreshSummary();
+
         var actions = new FlowLayoutPanel { Dock = DockStyle.Top, Height = 60, FlowDirection = FlowDirection.LeftToRight,
             BackColor = theme.Surface, Padding = new Padding(20, 6, 0, 0) };
         var save = new LabzButton { Text = "Save demo trade", Variant = LabzButtonVariant.Solid, Width = 150, Height = 38 };
@@ -99,9 +130,20 @@ internal static class PrivateBondsDemo
             if (!decimal.TryParse(editors[2].Text, out var quantity) || quantity <= 0 ||
                 !decimal.TryParse(editors[3].Text, out var price) || price <= 0 ||
                 string.IsNullOrWhiteSpace(editors[0].Text) ||
-                (side.Text is not ("BUY" or "SELL")))
+                (side.Text is not ("BUY" or "SELL")) ||
+                !DateTime.TryParseExact(editors[5].Text, "dd/MM/yyyy",
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    System.Globalization.DateTimeStyles.None, out var tradeDate) ||
+                !DateTime.TryParseExact(editors[6].Text, "dd/MM/yyyy",
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    System.Globalization.DateTimeStyles.None, out var settlementDate) ||
+                !DateTime.TryParseExact(editors[7].Text, "dd/MM/yyyy",
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    System.Globalization.DateTimeStyles.None, out var maturityDate) ||
+                settlementDate < tradeDate || maturityDate <= settlementDate ||
+                !decimal.TryParse(editors[8].Text, out var annualRate) || annualRate < 0)
             {
-                message.Text = "Check side, instrument, quantity and price.";
+                message.Text = "Check side, instrument, amounts, dates and annual rate.";
                 return;
             }
             var next = new Trade(trade?.Id ?? (Trades.Max(t => t.Id) + 1),
