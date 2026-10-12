@@ -518,7 +518,6 @@ public class LabzSearchLookup : UserControl
             _popupLifecycle.Dispose();
             _popup.Dispose();
             CancelPending();
-            _popupLifecycle.Dispose();
             UiThemeManager.ThemeChanged -= OnThemeChanged;
         }
         base.Dispose(disposing);
