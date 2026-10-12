@@ -9,8 +9,8 @@ public class LabzTabWorkspace : UserControl
 {
     private readonly FlowLayoutPanel _tabStrip = new()
     {
-        Dock = DockStyle.Top, Height = 40, WrapContents = false, AutoScroll = true,
-        FlowDirection = FlowDirection.LeftToRight, Padding = new Padding(4, 3, 4, 3)
+        Dock = DockStyle.Top, Height = 44, WrapContents = false, AutoScroll = true,
+        FlowDirection = FlowDirection.LeftToRight, Padding = new Padding(8, 5, 8, 3)
     };
     private readonly Panel _host = new() { Dock = DockStyle.Fill };
     private readonly Dictionary<string, WorkspacePage> _pages = new(StringComparer.OrdinalIgnoreCase);
@@ -63,7 +63,7 @@ public class LabzTabWorkspace : UserControl
         if (content.IsDisposed || content.Parent is not null)
             throw new ArgumentException("Page content must be a new unparented control.", nameof(createContent));
 
-        var tab = new Panel { Width = 180, Height = 32, Margin = new Padding(2, 0, 2, 0) };
+        var tab = new Panel { Width = 180, Height = 35, Margin = new Padding(2, 0, 2, 0) };
         var select = new Button
         {
             Dock = DockStyle.Fill, Text = title, FlatStyle = FlatStyle.Flat,
@@ -227,6 +227,8 @@ public class LabzTabWorkspace : UserControl
         {
             var selected = page.Id == _activePageId;
             page.Tab.BackColor = selected ? theme.ElevatedSurface : theme.SidebarSurface;
+            page.Tab.Padding = new Padding(0, selected ? 3 : 0, 0, 0);
+            if (selected) page.Tab.BackColor = theme.Primary;
             foreach (var button in new[] { page.SelectButton, page.CloseButton })
             {
                 button.BackColor = page.Tab.BackColor;
