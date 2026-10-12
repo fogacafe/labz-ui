@@ -346,7 +346,7 @@ public class LabzSearchLookup : UserControl
         _query.Bounds = new Rectangle(12, Math.Max(3, (Height - _query.PreferredHeight) / 2), Math.Max(1, Width - 60), _query.PreferredHeight);
         _popupPanel.Width = Math.Max(1, Width);
         _popup.Items[0].Size = _popupPanel.Size;
-        _popup.Size = _popupPanel.Size;
+        _popup.Size = new Size(_popupPanel.Width + 2, _popupPanel.Height + 2);
     }
 
     protected override void OnSizeChanged(EventArgs e)
