@@ -40,6 +40,7 @@ public class LabzSearchLookup : UserControl
     private readonly Panel _popupPanel = new() { Size = new Size(360, 220) };
     private bool _hovered;
     private readonly Label _status = new() { Dock = DockStyle.Top, Height = 30, TextAlign = ContentAlignment.MiddleLeft, Visible = false };
+    private LabzRoundedPopup? _roundedPopup;
     private readonly ToolStripDropDown _popup = new() { AutoClose = true, Padding = Padding.Empty };
     private readonly LabzPopupLifecycle _popupLifecycle;
     private readonly System.Windows.Forms.Timer _timer = new();
@@ -146,6 +147,7 @@ public class LabzSearchLookup : UserControl
             Margin = Padding.Empty,
             Padding = Padding.Empty
         });
+        _roundedPopup = new LabzRoundedPopup(_popup, _popupPanel);
         Controls.Add(_query);
         Size = new Size(360, 42);
         UiThemeManager.ThemeChanged += OnThemeChanged;
@@ -344,7 +346,7 @@ public class LabzSearchLookup : UserControl
         _query.Bounds = new Rectangle(12, Math.Max(3, (Height - _query.PreferredHeight) / 2), Math.Max(1, Width - 60), _query.PreferredHeight);
         _popupPanel.Width = Math.Max(1, Width);
         _popup.Items[0].Size = _popupPanel.Size;
-        _popup.Size = _popupPanel.Size;
+        _popup.Size = new Size(_popupPanel.Width + 2, _popupPanel.Height + 2);
     }
 
     protected override void OnSizeChanged(EventArgs e)
@@ -448,7 +450,6 @@ public class LabzSearchLookup : UserControl
         BackColor = theme.Surface;
         _query.BackColor = theme.Surface;
         _query.ForeColor = theme.Foreground;
-        _popup.BackColor = theme.Surface;
         _popupPanel.BackColor = theme.Surface;
         _status.BackColor = theme.Surface;
         _status.ForeColor = theme.Foreground;
@@ -516,6 +517,7 @@ public class LabzSearchLookup : UserControl
             _outsideClickMonitor.Dispose();
             _popup.Close();
             _popupLifecycle.Dispose();
+            _roundedPopup?.Dispose();
             _popup.Dispose();
             CancelPending();
             UiThemeManager.ThemeChanged -= OnThemeChanged;

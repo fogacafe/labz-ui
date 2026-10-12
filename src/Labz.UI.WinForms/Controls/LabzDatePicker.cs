@@ -21,6 +21,7 @@ public class LabzDatePicker : UserControl
     private CalendarView _calendarView = CalendarView.Days;
     private int _yearPageStart;
     private enum CalendarView { Days, Months, Years }
+    private LabzRoundedPopup? _roundedPopup;
     private readonly ToolStripDropDown _popup = new() { AutoClose = true, Padding = Padding.Empty, Margin = Padding.Empty };
     private readonly List<ScrollableControl> _scrollParents = [];
     private Form? _owner;
@@ -78,6 +79,7 @@ public class LabzDatePicker : UserControl
             Margin = Padding.Empty,
             Padding = Padding.Empty
         });
+        _roundedPopup = new LabzRoundedPopup(_popup, _calendar);
         _popup.Closed += (_, _) => { DetachOwner(); Invalidate(); };
         UiThemeManager.ThemeChanged += OnThemeChanged;
         ApplyTheme();
@@ -249,7 +251,6 @@ public class LabzDatePicker : UserControl
     {
         var theme = UiThemeManager.Current;
         _calendar.BackColor = theme.Surface;
-        _popup.BackColor = theme.Surface;
         if (_calendarView == CalendarView.Years && _yearPageStart == 0)
             _yearPageStart = Math.Clamp((_visibleMonth.Year - 1) / 12 * 12 + 1, 1, 9988);
         _monthTitle.Text = _calendarView switch
@@ -460,6 +461,7 @@ public class LabzDatePicker : UserControl
             UiThemeManager.ThemeChanged -= OnThemeChanged;
             _popup.Close();
             DetachOwner();
+            _roundedPopup?.Dispose();
             _popup.Dispose();
         }
         base.Dispose(disposing);
