@@ -227,14 +227,16 @@ public class LabzTabWorkspace : UserControl
         {
             var selected = page.Id == _activePageId;
             page.Tab.BackColor = selected ? theme.ElevatedSurface : theme.SidebarSurface;
-            page.Tab.Padding = new Padding(0, selected ? 3 : 0, 0, 0);
-            if (selected) page.Tab.BackColor = theme.Primary;
+            // A thin accent is painted on the tab itself; child buttons keep a neutral surface.
+            page.Tab.Padding = new Padding(0, selected ? 2 : 0, 0, 0);
+            page.Tab.BackColor = selected ? theme.Primary : theme.SidebarSurface;
             foreach (var button in new[] { page.SelectButton, page.CloseButton })
             {
-                button.BackColor = page.Tab.BackColor;
+                button.BackColor = selected ? theme.ElevatedSurface : theme.SidebarSurface;
                 button.ForeColor = selected ? theme.Foreground : theme.MutedForeground;
                 button.FlatAppearance.BorderSize = 0;
-                button.FlatAppearance.MouseOverBackColor = theme.SelectionSurface;
+                button.FlatAppearance.MouseOverBackColor = theme.ElevatedSurface;
+                button.FlatAppearance.MouseDownBackColor = theme.ElevatedSurface;
             }
         }
         Invalidate(true);
