@@ -191,12 +191,16 @@ public sealed class ShowcaseForm : Form
     {
         var panel = Stack();
         panel.Controls.AddRange([
-            new LabzDatePicker { Width = 270 },
-            new LabzDatePicker { Width = 270, ShowTime = true },
-            new LabzNumericInput { Width = 270, NumericFormat = LabzNumericFormat.Currency, Value = 1234.56m },
-            new LabzNumericInput { Width = 270, NumericFormat = LabzNumericFormat.Percent, Value = 12.5m },
-            new LabzNumericInput { Width = 270, NumericFormat = LabzNumericFormat.Number, AllowEmptyInput = true, Value = 100m }
+            new LabzDatePicker { Width = 270, Height = 44, MinimumSize = new Size(0, 44) },
+            new LabzDatePicker { Width = 270, Height = 44, MinimumSize = new Size(0, 44), ShowTime = true },
+            new LabzNumericInput { Width = 270, Height = 44, MinimumSize = new Size(0, 44), NumericFormat = LabzNumericFormat.Currency, Value = 1234.56m },
+            new LabzNumericInput { Width = 270, Height = 44, MinimumSize = new Size(0, 44), NumericFormat = LabzNumericFormat.Percent, Value = 12.5m },
+            new LabzNumericInput { Width = 270, Height = 44, MinimumSize = new Size(0, 44), NumericFormat = LabzNumericFormat.Number, AllowEmptyInput = true, Value = 100m }
         ]);
+        // The stack uses flex-shrink by default; inputs must retain their full
+        // height rather than being compressed when the gallery card is tight.
+        foreach (Control input in panel.Controls)
+            panel.SetFlex(input, shrink: 0);
         return panel;
     }
 
