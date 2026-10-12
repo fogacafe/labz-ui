@@ -108,11 +108,39 @@ public class LabzAppShell : UserControl
         ArgumentNullException.ThrowIfNull(workspace);
         ArgumentNullException.ThrowIfNull(pageFactory);
         if (workspace.IsDisposed) throw new ObjectDisposedException(nameof(workspace));
+        if (_workspace is not null)
+        {
+            _workspace.ActivePageChanged -= OnWorkspaceActivePageChanged;
+            _workspace.PageClosed -= OnWorkspacePageClosed;
+        }
         _workspace = workspace;
         _pageFactory = pageFactory;
+        workspace.ActivePageChanged += OnWorkspaceActivePageChanged;
+        workspace.PageClosed += OnWorkspacePageClosed;
         workspace.Dock = DockStyle.Fill;
         _content.Controls.Clear();
         _content.Controls.Add(workspace);
+    }
+
+    private void OnWorkspaceActivePageChanged(object? sender, LabzWorkspacePageEventArgs e)
+    {
+        var separator = e.PageId.IndexOf('/');
+        if (separator <= 0) return;
+        var moduleId = e.PageId[..separator];
+        var pageId = e.PageId[(separator + 1)..];
+        if (!string.Equals(_selectedModuleId, moduleId, StringComparison.OrdinalIgnoreCase))
+            SelectModule(moduleId);
+        _selectedPageId = pageId;
+        UpdatePageSelection();
+    }
+
+    private void OnWorkspacePageClosed(object? sender, LabzWorkspacePageEventArgs e)
+    {
+        if (_workspace?.ActivePageId is null)
+        {
+            _selectedPageId = null;
+            UpdatePageSelection();
+        }
     }
 
     [Category("Behavior")]
@@ -351,6 +379,11 @@ public class LabzAppShell : UserControl
             _statusBar.TenantChanging -= OnTenantChanging;
             _statusBar.TenantChanged -= OnTenantChanged;
             UiThemeManager.ThemeChanged -= OnThemeChanged;
+            if (_workspace is not null)
+            {
+                _workspace.ActivePageChanged -= OnWorkspaceActivePageChanged;
+                _workspace.PageClosed -= OnWorkspacePageClosed;
+            }
         }
         base.Dispose(disposing);
     }
