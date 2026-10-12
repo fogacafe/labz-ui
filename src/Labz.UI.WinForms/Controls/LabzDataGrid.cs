@@ -425,6 +425,7 @@ public class LabzDataGrid : DataGridView
         ColumnHeadersHeight = 40;
         RowTemplate.Height = 36;
         CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal;
+        ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.None;
         ApplyTheme();
         UiThemeManager.ThemeChanged += OnThemeChanged;
     }
