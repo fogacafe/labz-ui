@@ -45,14 +45,12 @@ internal sealed class LabzPopupLifecycle : IDisposable
             _owner.Move += OnAnchorChanged;
             _owner.Resize += OnAnchorChanged;
             _owner.FormClosed += OnOwnerClosed;
-            _owner.Deactivate += OnOwnerDeactivated;
         }
     }
 
     private void OnScrolled(object? sender, ScrollEventArgs e) => _popup.Close();
     private void OnAnchorChanged(object? sender, EventArgs e) => _popup.Close();
     private void OnOwnerClosed(object? sender, FormClosedEventArgs e) => _popup.Close();
-    private void OnOwnerDeactivated(object? sender, EventArgs e) => _popup.Close();
     private void OnPopupClosed(object? sender, ToolStripDropDownClosedEventArgs e) => Detach();
 
     private void Detach()
@@ -74,7 +72,6 @@ internal sealed class LabzPopupLifecycle : IDisposable
             _owner.Move -= OnAnchorChanged;
             _owner.Resize -= OnAnchorChanged;
             _owner.FormClosed -= OnOwnerClosed;
-            _owner.Deactivate -= OnOwnerDeactivated;
             _owner = null;
         }
     }
