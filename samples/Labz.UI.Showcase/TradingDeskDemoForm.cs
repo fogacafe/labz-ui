@@ -27,8 +27,18 @@ public sealed class TradingDeskDemoForm : Form
         var funds = new LabzModule("funds", "Funds", "F");
         funds.Pages.Add(new LabzNavigationPage("positions", "Positions", "Portfolio"));
         funds.Pages.Add(new LabzNavigationPage("settlements", "Settlements", "Operations"));
-        _shell.SetModules([bonds, funds]);
-        _shell.ConnectWorkspace(_workspace, CreatePage);
+        var credit = new LabzModule("credit", "Private Credit", "C");
+        credit.Pages.Add(new LabzNavigationPage("blotter", "Trade Blotter", "Trading"));
+        credit.Pages.Add(new LabzNavigationPage("new", "Buy / Sell", "Trading"));
+        _shell.SetModules([bonds, credit, funds]);
+        _shell.ConnectWorkspace(_workspace, (moduleId, pageId) =>
+            moduleId == "credit"
+                ? pageId == "blotter"
+                    ? PrivateBondsDemo.CreateBlotter(
+                        id => _workspace.Open($"credit/trade-{id}", $"Trade #{id}", () => PrivateBondsDemo.CreateEditor(id)),
+                        () => _shell.NavigateTo("credit", "new"))
+                    : PrivateBondsDemo.CreateEditor(null)
+                : CreatePage(moduleId, pageId));
         _shell.ResetWorkspaceOnTenantChange = true;
         _shell.StatusBar.UserContext = new LabzUserContext { Id = "demo", DisplayName = "Demo User" };
         var deskA = new LabzTenantContext { Id = "desk-a", DisplayName = "Trading Desk" };
