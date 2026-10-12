@@ -89,6 +89,7 @@ public class LabzDatePicker : UserControl
     public event EventHandler? ValueChanged;
 
     [Category("Behavior")]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
     public DateTime Value
     {
         get => _value;
@@ -106,6 +107,7 @@ public class LabzDatePicker : UserControl
     }
 
     [Category("Behavior")]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
     public DateTime MinDate
     {
         get => _minDate;
@@ -118,6 +120,7 @@ public class LabzDatePicker : UserControl
     }
 
     [Category("Behavior")]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
     public DateTime MaxDate
     {
         get => _maxDate;
