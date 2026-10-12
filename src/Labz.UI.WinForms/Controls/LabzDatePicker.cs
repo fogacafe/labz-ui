@@ -35,7 +35,7 @@ public class LabzDatePicker : UserControl
     {
         SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint |
             ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
-        Size = new Size(240, 42);
+        Size = new Size(240, 44);
         TabStop = true;
         Controls.Add(_editor);
         _visibleMonth = new DateTime(_value.Year, _value.Month, 1);
