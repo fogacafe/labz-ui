@@ -135,7 +135,8 @@ internal static class PrivateBondsDemo
             void Check(int index, bool ok, string error)
             {
                 if (ok) return;
-                editors[index].ApplyValidation(new ValidationMessage(ValidationSeverity.Error, error));
+                editors[index].ValidationState = ValidationSeverity.Error;
+                editors[index].ValidationMessage = error;
                 valid = false;
             }
 
@@ -143,7 +144,8 @@ internal static class PrivateBondsDemo
             side.ClearValidation();
             if (side.Text is not ("BUY" or "SELL"))
             {
-                side.ApplyValidation(new ValidationMessage(ValidationSeverity.Error, "Select BUY or SELL."));
+                side.ValidationState = ValidationSeverity.Error;
+                side.ValidationMessage = "Select BUY or SELL.";
                 valid = false;
             }
             Check(0, !string.IsNullOrWhiteSpace(editors[0].Text), "Instrument is required.");
