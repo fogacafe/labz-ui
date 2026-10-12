@@ -113,10 +113,20 @@ public sealed class TradingDeskDemoForm : Form
             surface.Padding = new Padding(0);
             var section = new Panel
             {
-                Dock = DockStyle.Top, Height = 168,
-                BackColor = theme.Surface, Padding = new Padding(20),
-                MaximumSize = new Size(760, 0)
+                Dock = DockStyle.None,
+                Location = Point.Empty,
+                Height = 168,
+                BackColor = theme.Surface,
+                Padding = new Padding(20)
             };
+            // A docked panel combined with MaximumSize could collapse to zero height.
+            // Explicit bounds keep the card visible while limiting its width.
+            void LayoutSection()
+            {
+                if (section.IsDisposed || surface.IsDisposed) return;
+                section.SetBounds(0, 0, Math.Max(1, Math.Min(760, surface.ClientSize.Width)), 168);
+            }
+            surface.Resize += (_, _) => LayoutSection();
             var sectionTitle = new Label
             {
                 Text = pageId == "orders" ? "Instrument details" : "Import source",
@@ -139,6 +149,7 @@ public sealed class TradingDeskDemoForm : Form
             section.Controls.Add(input);
             section.Controls.Add(sectionTitle);
             surface.Controls.Add(section);
+            LayoutSection();
         }
         return page;
     }
