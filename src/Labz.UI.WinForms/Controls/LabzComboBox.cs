@@ -327,7 +327,6 @@ public class LabzComboBox : UserControl
         _combo.BackColor = theme.Surface;
         _combo.ForeColor = theme.Foreground;
         _combo.Invalidate();
-        _popup.BackColor = theme.Surface;
         _list.BackColor = theme.Surface;
         _list.ForeColor = theme.Foreground;
         _list.Invalidate();
