@@ -19,10 +19,12 @@ public class LabzComboBox : UserControl
     private bool _hovered;
     private readonly ListBox _list = new() { BorderStyle = BorderStyle.None, IntegralHeight = false, DrawMode = DrawMode.OwnerDrawFixed, ItemHeight = 28 };
     private readonly ToolStripDropDown _popup = new() { AutoClose = true, Padding = Padding.Empty };
+    private readonly LabzPopupLifecycle _popupLifecycle;
     private readonly Label _selectionDisplay = new() { AutoEllipsis = true, TextAlign = ContentAlignment.MiddleLeft, Cursor = Cursors.Hand };
 
     public LabzComboBox()
     {
+        _popupLifecycle = new LabzPopupLifecycle(this, _popup);
         _combo = new ComboBox
         {
             DropDownStyle = ComboBoxStyle.DropDownList,
@@ -240,7 +242,7 @@ public class LabzComboBox : UserControl
         var anchor = PointToScreen(Point.Empty);
         var x = Math.Clamp(anchor.X, screen.Left, Math.Max(screen.Left, screen.Right - size.Width));
         var y = anchor.Y + Height + size.Height <= screen.Bottom ? anchor.Y + Height : Math.Max(screen.Top, anchor.Y - size.Height);
-        AttachPopupOwner();
+        _popupLifecycle.Attach();
         _popup.Show(new Point(x, y));
         _list.Focus();
         Invalidate();
@@ -344,39 +346,6 @@ public class LabzComboBox : UserControl
         else ApplyTheme();
     }
 
-    private Form? _popupOwner;
-
-    private void AttachPopupOwner()
-    {
-        var owner = FindForm();
-        if (ReferenceEquals(owner, _popupOwner)) return;
-        DetachPopupOwner();
-        _popupOwner = owner;
-        if (owner is null) return;
-        owner.Resize += OnOwnerResized;
-        owner.VisibleChanged += OnOwnerVisibilityChanged;
-        owner.FormClosed += OnOwnerClosed;
-    }
-
-    private void DetachPopupOwner()
-    {
-        if (_popupOwner is null) return;
-        _popupOwner.Resize -= OnOwnerResized;
-        _popupOwner.VisibleChanged -= OnOwnerVisibilityChanged;
-        _popupOwner.FormClosed -= OnOwnerClosed;
-        _popupOwner = null;
-    }
-
-    private void OnOwnerResized(object? sender, EventArgs e)
-    {
-        if (_popupOwner?.WindowState == FormWindowState.Minimized) _popup.Close();
-    }
-    private void OnOwnerVisibilityChanged(object? sender, EventArgs e)
-    {
-        if (_popupOwner?.Visible != true) _popup.Close();
-    }
-    private void OnOwnerClosed(object? sender, FormClosedEventArgs e) => _popup.Close();
-
     protected override void OnVisibleChanged(EventArgs e)
     {
         base.OnVisibleChanged(e);
@@ -388,14 +357,14 @@ public class LabzComboBox : UserControl
         base.OnParentChanged(e);
         if (_popup is null) return;
         _popup.Close();
-        AttachPopupOwner();
+        // Owner and ancestor handlers attach on the next popup opening.
     }
 
     protected override void Dispose(bool disposing)
     {
         if (disposing)
         {
-            DetachPopupOwner();
+            _popupLifecycle.Dispose();
             UiThemeManager.ThemeChanged -= OnThemeChanged;
             _popup.Close();
             _popup.Dispose();

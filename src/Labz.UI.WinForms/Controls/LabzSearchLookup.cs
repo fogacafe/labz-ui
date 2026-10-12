@@ -41,6 +41,7 @@ public class LabzSearchLookup : UserControl
     private bool _hovered;
     private readonly Label _status = new() { Dock = DockStyle.Top, Height = 30, TextAlign = ContentAlignment.MiddleLeft, Visible = false };
     private readonly ToolStripDropDown _popup = new() { AutoClose = true, Padding = Padding.Empty };
+    private readonly LabzPopupLifecycle _popupLifecycle;
     private readonly System.Windows.Forms.Timer _timer = new();
     private CancellationTokenSource? _pending;
     private long _version;
@@ -58,6 +59,7 @@ public class LabzSearchLookup : UserControl
 
     public LabzSearchLookup()
     {
+        _popupLifecycle = new LabzPopupLifecycle(this, _popup);
         SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
         _query.AccessibleName = "Lookup search";
         _query.Enter += (_, _) => Invalidate();
@@ -379,7 +381,7 @@ public class LabzSearchLookup : UserControl
             // A non-activating dropdown keeps the editor focused during async searches.
             // Dismissal is managed explicitly so clicks outside still close the popup.
             _popup.AutoClose = false;
-            AttachPopupOwner();
+            _popupLifecycle.Attach();
             _openingPopup = true;
             try
             {
@@ -489,39 +491,6 @@ public class LabzSearchLookup : UserControl
         else ApplyTheme();
     }
 
-    private Form? _popupOwner;
-
-    private void AttachPopupOwner()
-    {
-        var owner = FindForm();
-        if (ReferenceEquals(owner, _popupOwner)) return;
-        DetachPopupOwner();
-        _popupOwner = owner;
-        if (owner is null) return;
-        owner.Resize += OnOwnerResized;
-        owner.VisibleChanged += OnOwnerVisibilityChanged;
-        owner.FormClosed += OnOwnerClosed;
-    }
-
-    private void DetachPopupOwner()
-    {
-        if (_popupOwner is null) return;
-        _popupOwner.Resize -= OnOwnerResized;
-        _popupOwner.VisibleChanged -= OnOwnerVisibilityChanged;
-        _popupOwner.FormClosed -= OnOwnerClosed;
-        _popupOwner = null;
-    }
-
-    private void OnOwnerResized(object? sender, EventArgs e)
-    {
-        if (_popupOwner?.WindowState == FormWindowState.Minimized) _popup.Close();
-    }
-    private void OnOwnerVisibilityChanged(object? sender, EventArgs e)
-    {
-        if (_popupOwner?.Visible != true) _popup.Close();
-    }
-    private void OnOwnerClosed(object? sender, FormClosedEventArgs e) => _popup.Close();
-
     protected override void OnVisibleChanged(EventArgs e)
     {
         base.OnVisibleChanged(e);
@@ -533,7 +502,7 @@ public class LabzSearchLookup : UserControl
         base.OnParentChanged(e);
         if (_popup is null) return;
         _popup.Close();
-        AttachPopupOwner();
+        // Owner and ancestor handlers attach on the next popup opening.
     }
 
     protected override void Dispose(bool disposing)
@@ -546,9 +515,9 @@ public class LabzSearchLookup : UserControl
             _outsideClickMonitor.Stop();
             _outsideClickMonitor.Dispose();
             _popup.Close();
+            _popupLifecycle.Dispose();
             _popup.Dispose();
             CancelPending();
-            DetachPopupOwner();
             UiThemeManager.ThemeChanged -= OnThemeChanged;
         }
         base.Dispose(disposing);
