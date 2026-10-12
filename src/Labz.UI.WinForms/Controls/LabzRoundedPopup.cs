@@ -17,8 +17,12 @@ internal sealed class LabzRoundedPopup : IDisposable
     {
         _popup = popup;
         _content = content;
+        // The native WinForms dropdown shadow stays rectangular even when Region is rounded.
+        // Suppress it so the popup silhouette matches the Labz input chrome.
+        _popup.DropShadowEnabled = false;
         _popup.Resize += Refresh;
         _popup.Opened += Refresh;
+        _popup.Layout += Refresh;
         _content.Resize += Refresh;
     }
 
@@ -28,6 +32,18 @@ internal sealed class LabzRoundedPopup : IDisposable
         var radius = Math.Max(2, UiThemeManager.Current.CornerRadius);
         SetRoundedRegion(_popup, radius);
         SetRoundedRegion(_content, radius);
+        // ToolStrip can finalize its bounds after Opened; refresh once the layout settles.
+        if (sender == _popup && _popup.IsHandleCreated && _popup.Visible)
+        {
+            _popup.BeginInvoke((Action)(() =>
+            {
+                if (!_disposed && !_popup.IsDisposed && _popup.Visible)
+                {
+                    SetRoundedRegion(_popup, Math.Max(2, UiThemeManager.Current.CornerRadius));
+                    SetRoundedRegion(_content, Math.Max(2, UiThemeManager.Current.CornerRadius));
+                }
+            }));
+        }
     }
 
     private static void SetRoundedRegion(Control control, int radius)
@@ -53,6 +69,7 @@ internal sealed class LabzRoundedPopup : IDisposable
         _disposed = true;
         _popup.Resize -= Refresh;
         _popup.Opened -= Refresh;
+        _popup.Layout -= Refresh;
         _content.Resize -= Refresh;
     }
 }
