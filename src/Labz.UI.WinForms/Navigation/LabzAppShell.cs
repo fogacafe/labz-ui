@@ -161,6 +161,8 @@ public class LabzAppShell : UserControl
     {
         var module = _modules.FirstOrDefault(m => string.Equals(m.Id, id, StringComparison.OrdinalIgnoreCase));
         if (module is null) return false;
+        if (!string.Equals(_selectedModuleId, module.Id, StringComparison.OrdinalIgnoreCase))
+            _selectedPageId = null;
         _selectedModuleId = module.Id;
         _moduleTitle.Text = "  " + module.Title;
         BuildSidebar(module);
