@@ -251,7 +251,6 @@ public class LabzDatePicker : UserControl
     {
         var theme = UiThemeManager.Current;
         _calendar.BackColor = theme.Surface;
-        _popup.BackColor = theme.Surface;
         if (_calendarView == CalendarView.Years && _yearPageStart == 0)
             _yearPageStart = Math.Clamp((_visibleMonth.Year - 1) / 12 * 12 + 1, 1, 9988);
         _monthTitle.Text = _calendarView switch
