@@ -28,6 +28,7 @@ public class LabzAppShell : UserControl
     };
     private readonly List<LabzModule> _modules = [];
     private string? _selectedModuleId;
+    private string? _selectedPageId;
     private bool _sidebarExpanded = true;
     private LabzTabWorkspace? _workspace;
     private Func<string, string, Control>? _pageFactory;
@@ -107,11 +108,39 @@ public class LabzAppShell : UserControl
         ArgumentNullException.ThrowIfNull(workspace);
         ArgumentNullException.ThrowIfNull(pageFactory);
         if (workspace.IsDisposed) throw new ObjectDisposedException(nameof(workspace));
+        if (_workspace is not null)
+        {
+            _workspace.ActivePageChanged -= OnWorkspaceActivePageChanged;
+            _workspace.PageClosed -= OnWorkspacePageClosed;
+        }
         _workspace = workspace;
         _pageFactory = pageFactory;
+        workspace.ActivePageChanged += OnWorkspaceActivePageChanged;
+        workspace.PageClosed += OnWorkspacePageClosed;
         workspace.Dock = DockStyle.Fill;
         _content.Controls.Clear();
         _content.Controls.Add(workspace);
+    }
+
+    private void OnWorkspaceActivePageChanged(object? sender, LabzWorkspacePageEventArgs e)
+    {
+        var separator = e.PageId.IndexOf('/');
+        if (separator <= 0) return;
+        var moduleId = e.PageId[..separator];
+        var pageId = e.PageId[(separator + 1)..];
+        if (!string.Equals(_selectedModuleId, moduleId, StringComparison.OrdinalIgnoreCase))
+            SelectModule(moduleId);
+        _selectedPageId = pageId;
+        UpdatePageSelection();
+    }
+
+    private void OnWorkspacePageClosed(object? sender, LabzWorkspacePageEventArgs e)
+    {
+        if (_workspace?.ActivePageId is null)
+        {
+            _selectedPageId = null;
+            UpdatePageSelection();
+        }
     }
 
     [Category("Behavior")]
@@ -160,6 +189,8 @@ public class LabzAppShell : UserControl
     {
         var module = _modules.FirstOrDefault(m => string.Equals(m.Id, id, StringComparison.OrdinalIgnoreCase));
         if (module is null) return false;
+        if (!string.Equals(_selectedModuleId, module.Id, StringComparison.OrdinalIgnoreCase))
+            _selectedPageId = null;
         _selectedModuleId = module.Id;
         _moduleTitle.Text = "  " + module.Title;
         BuildSidebar(module);
@@ -180,6 +211,9 @@ public class LabzAppShell : UserControl
 
     private void RequestPage(LabzModule module, LabzNavigationPage page)
     {
+        _selectedModuleId = module.Id;
+        _selectedPageId = page.Id;
+        UpdatePageSelection();
         if (_workspace is not null && _pageFactory is not null)
         {
             var key = module.Id + "/" + page.Id;
@@ -229,6 +263,8 @@ public class LabzAppShell : UserControl
                 {
                     var button = CreateButton(page.Title, 190);
                     button.Height = 36;
+                    button.Tag = page.Id;
+                    button.Resize += (_, _) => ApplyNavigationCorners(button);
                     button.TextAlign = ContentAlignment.MiddleLeft;
                     button.Padding = new Padding(16, 0, 0, 0);
                     button.AccessibleName = module.Title + " / " + page.Title;
@@ -237,6 +273,7 @@ public class LabzAppShell : UserControl
                 }
             }
             ApplyTheme();
+            UpdatePageSelection();
         }
         finally { _pageButtons.ResumeLayout(); }
     }
@@ -254,12 +291,43 @@ public class LabzAppShell : UserControl
             control.Width = width;
     }
 
+    private static void ApplyNavigationCorners(Button button)
+    {
+        if (button.IsDisposed || button.Width <= 0 || button.Height <= 0) return;
+        const int radius = 6;
+        using var path = new System.Drawing.Drawing2D.GraphicsPath();
+        var diameter = radius * 2;
+        var bounds = new Rectangle(0, 0, button.Width - 1, button.Height - 1);
+        path.AddArc(bounds.Left, bounds.Top, diameter, diameter, 180, 90);
+        path.AddArc(bounds.Right - diameter, bounds.Top, diameter, diameter, 270, 90);
+        path.AddArc(bounds.Right - diameter, bounds.Bottom - diameter, diameter, diameter, 0, 90);
+        path.AddArc(bounds.Left, bounds.Bottom - diameter, diameter, diameter, 90, 90);
+        path.CloseFigure();
+        var previous = button.Region;
+        button.Region = new Region(path);
+        previous?.Dispose();
+    }
+
+    private void UpdatePageSelection()
+    {
+        var theme = UiThemeManager.Current;
+        foreach (var button in _pageButtons.Controls.OfType<Button>())
+        {
+            var selected = string.Equals(button.Tag as string, _selectedPageId, StringComparison.OrdinalIgnoreCase);
+            button.BackColor = selected ? theme.SelectionSurface : theme.SidebarSurface;
+            button.ForeColor = selected ? theme.Foreground : theme.MutedForeground;
+            button.FlatAppearance.BorderSize = 0;
+            button.FlatAppearance.MouseOverBackColor = theme.SelectionSurface;
+            ApplyNavigationCorners(button);
+        }
+    }
+
     private void UpdateActivitySelection()
     {
         var theme = UiThemeManager.Current;
         foreach (Button button in _moduleButtons.Controls.OfType<Button>())
             button.BackColor = string.Equals(button.Tag as string, _selectedModuleId, StringComparison.OrdinalIgnoreCase)
-                ? theme.Primary : theme.Surface;
+                ? theme.SelectionSurface : theme.Background;
     }
 
     private void ApplyTheme()
@@ -268,31 +336,32 @@ public class LabzAppShell : UserControl
         var theme = UiThemeManager.Current;
         BackColor = theme.Background;
         _content.BackColor = theme.Background;
-        _sidebar.BackColor = theme.Surface;
-        _sidebarDivider.BackColor = ControlPaint.Dark(theme.Surface, 0.08f);
+        _sidebar.BackColor = theme.SidebarSurface;
+        _sidebarDivider.BackColor = theme.SubtleBorder;
         _activityBar.BackColor = theme.Background;
         _moduleButtons.BackColor = theme.Background;
-        _pageButtons.BackColor = theme.Surface;
-        _moduleTitle.BackColor = theme.Surface;
+        _pageButtons.BackColor = theme.SidebarSurface;
+        _moduleTitle.BackColor = theme.SidebarSurface;
         _moduleTitle.ForeColor = theme.Foreground;
         foreach (Button button in _moduleButtons.Controls.OfType<Button>())
         {
             button.ForeColor = theme.Foreground;
             button.FlatAppearance.BorderSize = 0;
-            button.FlatAppearance.MouseOverBackColor = ControlPaint.Light(theme.Surface, 0.08f);
+            button.FlatAppearance.MouseOverBackColor = theme.SelectionSurface;
         }
         foreach (Control control in _pageButtons.Controls)
         {
-            control.ForeColor = theme.Foreground;
-            control.BackColor = theme.Surface;
+            control.ForeColor = control is Label ? theme.MutedForeground : theme.Foreground;
+            control.BackColor = theme.SidebarSurface;
             if (control is Button button)
             {
                 button.FlatAppearance.BorderSize = 0;
                 button.FlatAppearance.MouseOverBackColor = ControlPaint.Light(theme.Surface, 0.08f);
-                button.FlatAppearance.MouseDownBackColor = ControlPaint.Light(theme.Surface, 0.15f);
+                button.FlatAppearance.MouseDownBackColor = theme.SelectionSurface;
             }
         }
         UpdateActivitySelection();
+        UpdatePageSelection();
         Invalidate(true);
     }
 
@@ -310,6 +379,11 @@ public class LabzAppShell : UserControl
             _statusBar.TenantChanging -= OnTenantChanging;
             _statusBar.TenantChanged -= OnTenantChanged;
             UiThemeManager.ThemeChanged -= OnThemeChanged;
+            if (_workspace is not null)
+            {
+                _workspace.ActivePageChanged -= OnWorkspaceActivePageChanged;
+                _workspace.PageClosed -= OnWorkspacePageClosed;
+            }
         }
         base.Dispose(disposing);
     }
