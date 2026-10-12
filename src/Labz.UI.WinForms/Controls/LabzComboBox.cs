@@ -239,7 +239,7 @@ public class LabzComboBox : UserControl
         var size = new Size(Math.Max(Width, 140), height);
         _list.Size = size;
         _popup.Items[0].Size = size;
-        _popup.Size = size;
+        _popup.Size = new Size(size.Width + 2, size.Height + 2);
         var screen = Screen.FromControl(this).WorkingArea;
         var anchor = PointToScreen(Point.Empty);
         var x = Math.Clamp(anchor.X, screen.Left, Math.Max(screen.Left, screen.Right - size.Width));
