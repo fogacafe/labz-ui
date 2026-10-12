@@ -40,6 +40,7 @@ public class LabzSearchLookup : UserControl
     private readonly Panel _popupPanel = new() { Size = new Size(360, 220) };
     private bool _hovered;
     private readonly Label _status = new() { Dock = DockStyle.Top, Height = 30, TextAlign = ContentAlignment.MiddleLeft, Visible = false };
+    private LabzRoundedPopup? _roundedPopup;
     private readonly ToolStripDropDown _popup = new() { AutoClose = true, Padding = Padding.Empty };
     private readonly LabzPopupLifecycle _popupLifecycle;
     private readonly System.Windows.Forms.Timer _timer = new();
@@ -146,6 +147,7 @@ public class LabzSearchLookup : UserControl
             Margin = Padding.Empty,
             Padding = Padding.Empty
         });
+        _roundedPopup = new LabzRoundedPopup(_popup, _popupPanel);
         Controls.Add(_query);
         Size = new Size(360, 42);
         UiThemeManager.ThemeChanged += OnThemeChanged;
@@ -516,6 +518,7 @@ public class LabzSearchLookup : UserControl
             _outsideClickMonitor.Dispose();
             _popup.Close();
             _popupLifecycle.Dispose();
+            _roundedPopup?.Dispose();
             _popup.Dispose();
             CancelPending();
             UiThemeManager.ThemeChanged -= OnThemeChanged;
