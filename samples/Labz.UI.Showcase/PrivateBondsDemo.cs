@@ -58,8 +58,8 @@ internal static class PrivateBondsDemo
             Variant = LabzLabelVariant.Heading, AutoSize = false, Dock = DockStyle.Top, Height = 64 };
         var card = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, ColumnCount = 2, RowCount = 0,
             Padding = new Padding(20), BackColor = theme.Surface, Width = 740 };
-        card.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 35));
-        card.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 65));
+        card.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 29));
+        card.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 71));
 
         var fields = new (string Label, string Value)[]
         {
@@ -86,7 +86,7 @@ internal static class PrivateBondsDemo
             {
                 var sectionRow = card.RowCount++;
                 card.RowStyles.Add(new RowStyle(SizeType.Absolute, 44));
-                var heading = new LabzLabel { Text = sectionName, Variant = LabzLabelVariant.Muted,
+                var heading = new LabzLabel { Text = sectionName, Variant = LabzLabelVariant.Body,
                     Dock = DockStyle.Fill, AutoSize = false, TextAlign = ContentAlignment.BottomLeft };
                 card.Controls.Add(heading, 0, sectionRow);
                 card.SetColumnSpan(heading, 2);
@@ -171,13 +171,68 @@ internal static class PrivateBondsDemo
             return valid;
         }
 
-        foreach (var editor in editors)
-            editor.TextChanged += (_, _) =>
+        // Keep errors visible while editing; revalidate a field when focus leaves it.
+        // Cross-field date constraints are checked again on Save.
+        bool IsFieldValid(int index)
+        {
+            var value = editors[index].Text;
+            return index switch
             {
-                if (editor.ValidationState != ValidationSeverity.None) editor.ClearValidation();
-                message.Text = "";
+                0 or 1 or 4 => !string.IsNullOrWhiteSpace(value),
+                2 or 3 => decimal.TryParse(value, out var amount) && amount > 0,
+                5 or 6 or 7 => DateTime.TryParseExact(value, "dd/MM/yyyy",
+                    CultureInfo.InvariantCulture, DateTimeStyles.None, out _),
+                8 => decimal.TryParse(value, out var rate) && rate >= 0,
+                _ => true
             };
-        side.SelectedIndexChanged += (_, _) => { side.ClearValidation(); message.Text = ""; };
+        }
+
+        var fieldErrors = new[]
+        {
+            "Instrument is required.", "Issuer is required.",
+            "Enter a positive quantity.", "Enter a positive unit price.",
+            "Counterparty is required.", "Use dd/MM/yyyy.",
+            "Use dd/MM/yyyy.", "Use dd/MM/yyyy.", "Enter a nonnegative rate."
+        };
+        for (var i = 0; i < editors.Count; i++)
+        {
+            var index = i;
+            editors[i].Leave += (_, _) =>
+            {
+                if (IsFieldValid(index))
+                {
+                    // Do not erase cross-field date errors until the entire date range is valid.
+                    if (index is 5 or 6 or 7)
+                    {
+                        var datesOk = Enumerable.Range(5, 3).All(IsFieldValid);
+                        if (datesOk)
+                        {
+                            DateTime.TryParseExact(editors[5].Text, "dd/MM/yyyy", CultureInfo.InvariantCulture,
+                                DateTimeStyles.None, out var tradeDate);
+                            DateTime.TryParseExact(editors[6].Text, "dd/MM/yyyy", CultureInfo.InvariantCulture,
+                                DateTimeStyles.None, out var settlementDate);
+                            DateTime.TryParseExact(editors[7].Text, "dd/MM/yyyy", CultureInfo.InvariantCulture,
+                                DateTimeStyles.None, out var maturityDate);
+                            if (settlementDate >= tradeDate && maturityDate > settlementDate)
+                                foreach (var dateIndex in new[] { 5, 6, 7 }) editors[dateIndex].ClearValidation();
+                        }
+                        else editors[index].ClearValidation();
+                    }
+                    else editors[index].ClearValidation();
+                }
+                else
+                {
+                    editors[index].ValidationState = ValidationSeverity.Error;
+                    editors[index].ValidationMessage = fieldErrors[index];
+                }
+            };
+            editors[i].TextChanged += (_, _) => { message.Text = ""; };
+        }
+        side.SelectedIndexChanged += (_, _) =>
+        {
+            if (side.Text is "BUY" or "SELL") side.ClearValidation();
+            message.Text = "";
+        };
 
         save.Click += (_, _) =>
         {
@@ -205,7 +260,10 @@ internal static class PrivateBondsDemo
         root.Controls.Add(actions);
         root.Controls.Add(card);
         root.Controls.Add(title);
-        root.Resize += (_, _) => card.Width = Math.Min(760, Math.Max(360, root.ClientSize.Width - 48));
+        // Avoid kilometer-wide input fields on large monitors.
+        void ResizeForm() => card.Width = Math.Min(880, Math.Max(320, root.ClientSize.Width - root.Padding.Horizontal));
+        root.Resize += (_, _) => ResizeForm();
+        ResizeForm();
         return root;
     }
 }
