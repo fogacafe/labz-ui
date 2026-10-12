@@ -510,11 +510,11 @@ public class LabzDataGrid : DataGridView
         BackgroundColor = theme.Surface;
         BackColor = theme.Surface;
         ForeColor = theme.Foreground;
-        GridColor = theme.Border;
+        GridColor = theme.SubtleBorder;
         DefaultCellStyle.BackColor = theme.Surface;
         DefaultCellStyle.ForeColor = theme.Foreground;
-        DefaultCellStyle.SelectionBackColor = theme.Primary;
-        DefaultCellStyle.SelectionForeColor = Color.White;
+        DefaultCellStyle.SelectionBackColor = theme.SelectionSurface;
+        DefaultCellStyle.SelectionForeColor = theme.Foreground;
         DefaultCellStyle.Padding = new Padding(8, 4, 8, 4);
         AlternatingRowsDefaultCellStyle.BackColor = StripedRows
             ? Color.FromArgb(
@@ -523,12 +523,12 @@ public class LabzDataGrid : DataGridView
                 (theme.Surface.B * 9 + theme.Background.B) / 10)
             : theme.Surface;
         AlternatingRowsDefaultCellStyle.ForeColor = theme.Foreground;
-        AlternatingRowsDefaultCellStyle.SelectionBackColor = theme.Primary;
-        AlternatingRowsDefaultCellStyle.SelectionForeColor = Color.White;
-        ColumnHeadersDefaultCellStyle.BackColor = theme.Background;
-        ColumnHeadersDefaultCellStyle.ForeColor = theme.Foreground;
-        ColumnHeadersDefaultCellStyle.SelectionBackColor = theme.Background;
-        ColumnHeadersDefaultCellStyle.SelectionForeColor = theme.Foreground;
+        AlternatingRowsDefaultCellStyle.SelectionBackColor = theme.SelectionSurface;
+        AlternatingRowsDefaultCellStyle.SelectionForeColor = theme.Foreground;
+        ColumnHeadersDefaultCellStyle.BackColor = theme.ElevatedSurface;
+        ColumnHeadersDefaultCellStyle.ForeColor = theme.MutedForeground;
+        ColumnHeadersDefaultCellStyle.SelectionBackColor = theme.ElevatedSurface;
+        ColumnHeadersDefaultCellStyle.SelectionForeColor = theme.MutedForeground;
         UpdateHeaderFont();
         RowHeadersDefaultCellStyle.BackColor = theme.Background;
         RowHeadersDefaultCellStyle.ForeColor = theme.Foreground;
