@@ -1,6 +1,8 @@
 using System.ComponentModel;
 using Labz.UI.Core.Theming;
 using Labz.UI.WinForms.Controls;
+using Labz.UI.Validation;
+using System.Globalization;
 
 namespace Labz.UI.Showcase;
 
@@ -90,7 +92,7 @@ internal static class PrivateBondsDemo
                 card.SetColumnSpan(heading, 2);
             }
             var row = card.RowCount++;
-            card.RowStyles.Add(new RowStyle(SizeType.Absolute, 60));
+            card.RowStyles.Add(new RowStyle(SizeType.Absolute, 84));
             card.Controls.Add(new LabzLabel { Text = label, Variant = LabzLabelVariant.Body,
                 Dock = DockStyle.Fill, AutoSize = false, TextAlign = ContentAlignment.MiddleLeft }, 0, row);
             if (i == 0)
@@ -125,27 +127,65 @@ internal static class PrivateBondsDemo
         var save = new LabzButton { Text = "Save demo trade", Variant = LabzButtonVariant.Solid, Width = 150, Height = 38 };
         var message = new LabzLabel { Text = "", Variant = LabzLabelVariant.Muted,
             AutoSize = true, Padding = new Padding(12, 8, 0, 0) };
+        // Validate each input independently so users can correct multiple errors at once.
+        // Row height reserves space for the built-in validation message.
+        bool ValidateFields()
+        {
+            var valid = true;
+            void Check(int index, bool ok, string error)
+            {
+                if (ok) return;
+                editors[index].ApplyValidation(new ValidationMessage(ValidationSeverity.Error, error));
+                valid = false;
+            }
+
+            foreach (var editor in editors) editor.ClearValidation();
+            side.ClearValidation();
+            if (side.Text is not ("BUY" or "SELL"))
+            {
+                side.ApplyValidation(new ValidationMessage(ValidationSeverity.Error, "Select BUY or SELL."));
+                valid = false;
+            }
+            Check(0, !string.IsNullOrWhiteSpace(editors[0].Text), "Instrument is required.");
+            Check(1, !string.IsNullOrWhiteSpace(editors[1].Text), "Issuer is required.");
+            Check(2, decimal.TryParse(editors[2].Text, out var q) && q > 0, "Enter a positive quantity.");
+            Check(3, decimal.TryParse(editors[3].Text, out var p) && p > 0, "Enter a positive unit price.");
+            Check(4, !string.IsNullOrWhiteSpace(editors[4].Text), "Counterparty is required.");
+            bool ParseDate(int index, out DateTime date)
+            {
+                var ok = DateTime.TryParseExact(editors[index].Text, "dd/MM/yyyy",
+                    CultureInfo.InvariantCulture, DateTimeStyles.None, out date);
+                Check(index, ok, "Use dd/MM/yyyy.");
+                return ok;
+            }
+            var hasTrade = ParseDate(5, out var tradeDate);
+            var hasSettlement = ParseDate(6, out var settlementDate);
+            var hasMaturity = ParseDate(7, out var maturityDate);
+            if (hasTrade && hasSettlement)
+                Check(6, settlementDate >= tradeDate, "Settlement precedes trade date.");
+            if (hasSettlement && hasMaturity)
+                Check(7, maturityDate > settlementDate, "Maturity must follow settlement.");
+            Check(8, decimal.TryParse(editors[8].Text, out var rate) && rate >= 0, "Enter a nonnegative rate.");
+            return valid;
+        }
+
+        foreach (var editor in editors)
+            editor.TextChanged += (_, _) =>
+            {
+                if (editor.ValidationState != ValidationSeverity.None) editor.ClearValidation();
+                message.Text = "";
+            };
+        side.SelectedIndexChanged += (_, _) => { side.ClearValidation(); message.Text = ""; };
+
         save.Click += (_, _) =>
         {
-            if (!decimal.TryParse(editors[2].Text, out var quantity) || quantity <= 0 ||
-                !decimal.TryParse(editors[3].Text, out var price) || price <= 0 ||
-                string.IsNullOrWhiteSpace(editors[0].Text) ||
-                (side.Text is not ("BUY" or "SELL")) ||
-                !DateTime.TryParseExact(editors[5].Text, "dd/MM/yyyy",
-                    System.Globalization.CultureInfo.InvariantCulture,
-                    System.Globalization.DateTimeStyles.None, out var tradeDate) ||
-                !DateTime.TryParseExact(editors[6].Text, "dd/MM/yyyy",
-                    System.Globalization.CultureInfo.InvariantCulture,
-                    System.Globalization.DateTimeStyles.None, out var settlementDate) ||
-                !DateTime.TryParseExact(editors[7].Text, "dd/MM/yyyy",
-                    System.Globalization.CultureInfo.InvariantCulture,
-                    System.Globalization.DateTimeStyles.None, out var maturityDate) ||
-                settlementDate < tradeDate || maturityDate <= settlementDate ||
-                !decimal.TryParse(editors[8].Text, out var annualRate) || annualRate < 0)
+            if (!ValidateFields())
             {
-                message.Text = "Check side, instrument, amounts, dates and annual rate.";
+                message.Text = "Please correct the highlighted fields.";
                 return;
             }
+            var quantity = decimal.Parse(editors[2].Text);
+            var price = decimal.Parse(editors[3].Text);
             var next = new Trade(trade?.Id ?? (Trades.Max(t => t.Id) + 1),
                 editors[0].Text.Trim(), editors[1].Text.Trim(), side.Text,
                 quantity, price, editors[4].Text.Trim(), "DRAFT");
