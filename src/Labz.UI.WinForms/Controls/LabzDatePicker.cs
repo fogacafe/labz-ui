@@ -44,7 +44,13 @@ public class LabzDatePicker : UserControl
         _previous.Click += (_, _) => Navigate(-1);
         _next.Click += (_, _) => Navigate(1);
         _monthTitle.Cursor = Cursors.Hand;
-        _monthTitle.Click += (_, _) => { _calendarView = _calendarView == CalendarView.Days ? CalendarView.Months : CalendarView.Years; RenderCalendar(); };
+        _monthTitle.Click += (_, _) =>
+        {
+            _calendarView = _calendarView == CalendarView.Days ? CalendarView.Months : CalendarView.Years;
+            if (_calendarView == CalendarView.Years)
+                _yearPageStart = Math.Clamp((_visibleMonth.Year - 1) / 12 * 12 + 1, 1, 9988);
+            RenderCalendar();
+        };
         _calendar.Controls.AddRange([_previous, _next, _monthTitle]);
         for (var i = 0; i < 7; i++)
         {
@@ -185,6 +191,7 @@ public class LabzDatePicker : UserControl
         CommitText();
         _visibleMonth = new DateTime(Value.Year, Value.Month, 1);
         _calendarView = CalendarView.Days;
+        _yearPageStart = Math.Clamp((Value.Year - 1) / 12 * 12 + 1, 1, 9988);
         RenderCalendar();
         AttachOwner();
         // Use control-relative placement, never absolute screen coordinates.
