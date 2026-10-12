@@ -105,7 +105,7 @@ internal static class PrivateBondsDemo
                 return;
             }
             var next = new Trade(trade?.Id ?? (Trades.Max(t => t.Id) + 1),
-                editors[1].Text.Trim(), editors[2].Text.Trim(), side.Text,
+                editors[0].Text.Trim(), editors[1].Text.Trim(), side.Text,
                 quantity, price, editors[4].Text.Trim(), "DRAFT");
             if (trade is null) Trades.Add(next);
             else
