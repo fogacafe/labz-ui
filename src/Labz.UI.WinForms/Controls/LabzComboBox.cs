@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Drawing.Drawing2D;
 using Labz.UI.Rendering.Drawing;
 using Labz.UI.Core.Theming;
+using Labz.UI.Validation;
 
 namespace Labz.UI.WinForms.Controls;
 
@@ -17,6 +18,9 @@ public class LabzComboBox : UserControl
     private readonly Button _searchButton;
     private bool _showSearchButton;
     private bool _hovered;
+    private ValidationSeverity _validationState;
+    private string _validationMessage = string.Empty;
+    private bool _showValidationMessage = true;
     private readonly ListBox _list = new() { BorderStyle = BorderStyle.None, IntegralHeight = false, DrawMode = DrawMode.OwnerDrawFixed, ItemHeight = 28 };
     private LabzRoundedPopup? _roundedPopup;
     private readonly ToolStripDropDown _popup = new() { AutoClose = true, Padding = Padding.Empty };
@@ -153,6 +157,46 @@ public class LabzComboBox : UserControl
         }
     }
 
+    [Category("Validation")]
+    [DefaultValue(ValidationSeverity.None)]
+    public ValidationSeverity ValidationState
+    {
+        get => _validationState;
+        set { _validationState = value; LayoutChildren(); Invalidate(); }
+    }
+
+    [Category("Validation")]
+    [DefaultValue("")]
+    public string ValidationMessage
+    {
+        get => _validationMessage;
+        set { _validationMessage = value ?? string.Empty; LayoutChildren(); Invalidate(); }
+    }
+
+    [Category("Validation")]
+    [DefaultValue(true)]
+    public bool ShowValidationMessage
+    {
+        get => _showValidationMessage;
+        set { _showValidationMessage = value; LayoutChildren(); Invalidate(); }
+    }
+
+    public void ClearValidation()
+    {
+        _validationState = ValidationSeverity.None;
+        _validationMessage = string.Empty;
+        LayoutChildren();
+        Invalidate();
+    }
+
+    public void ApplyValidation(ValidationMessage? message)
+    {
+        _validationState = message?.Severity ?? ValidationSeverity.None;
+        _validationMessage = message?.Message ?? string.Empty;
+        LayoutChildren();
+        Invalidate();
+    }
+
     [Category("Action")]
     public event EventHandler? SearchRequested;
 
@@ -220,10 +264,11 @@ public class LabzComboBox : UserControl
         if (_combo is null || _searchButton is null) return;
         var actionWidth = _showSearchButton ? 36 : 0;
         _combo.Bounds = new Rectangle(0, 0, 1, 1);
-        _selectionDisplay.Bounds = new Rectangle(12, 4, Math.Max(1, Width - actionWidth - 44), Math.Max(1, Height - 8));
+        var inputHeight = Math.Max(28, Height - (HasValidationMessage ? 22 : 0));
+        _selectionDisplay.Bounds = new Rectangle(12, 4, Math.Max(1, Width - actionWidth - 44), Math.Max(1, inputHeight - 8));
         _selectionDisplay.BringToFront();
         _searchButton.Bounds = new Rectangle(Math.Max(0, Width - 36),
-            Math.Max(2, (Height - 30) / 2), 32, 30);
+            Math.Max(2, (inputHeight - 30) / 2), 32, 30);
     }
 
     protected override void OnMouseClick(MouseEventArgs e)
@@ -252,7 +297,8 @@ public class LabzComboBox : UserControl
         var screen = Screen.FromControl(this).WorkingArea;
         var anchor = PointToScreen(Point.Empty);
         var x = Math.Clamp(anchor.X, screen.Left, Math.Max(screen.Left, screen.Right - size.Width));
-        var y = anchor.Y + Height + size.Height <= screen.Bottom ? anchor.Y + Height : Math.Max(screen.Top, anchor.Y - size.Height);
+        var inputHeight = Math.Max(28, Height - (HasValidationMessage ? 22 : 0));
+        var y = anchor.Y + inputHeight + size.Height <= screen.Bottom ? anchor.Y + inputHeight : Math.Max(screen.Top, anchor.Y - size.Height);
         _popupLifecycle.Attach();
         _popup.Show(new Point(x, y));
         _list.Focus();
@@ -304,27 +350,44 @@ public class LabzComboBox : UserControl
         _selectionDisplay.Invalidate();
     }
 
+    private bool HasValidationMessage => _showValidationMessage && !string.IsNullOrWhiteSpace(_validationMessage);
+
     protected override void OnPaint(PaintEventArgs e)
     {
         base.OnPaint(e);
         var theme = UiThemeManager.Current;
         e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
         e.Graphics.Clear(Parent?.BackColor ?? theme.Background);
-        using var path = RoundedRectangles.Create(new Rectangle(1, 1, Math.Max(1, Width - 3), Math.Max(1, Height - 3)), theme.CornerRadius);
+        var inputHeight = Math.Max(28, Height - (HasValidationMessage ? 22 : 0));
+        using var path = RoundedRectangles.Create(new Rectangle(1, 1, Math.Max(1, Width - 3), Math.Max(1, inputHeight - 3)), theme.CornerRadius);
         using var fill = new SolidBrush(theme.Surface);
         var hasFocus = ContainsFocus || _popup.Visible;
-        using var border = new Pen(hasFocus ? theme.Primary : _hovered ? ControlPaint.Dark(theme.Border) : theme.Border, hasFocus ? 2 : 1);
+        var borderColor = _validationState switch
+        {
+            ValidationSeverity.Error => theme.Danger,
+            ValidationSeverity.Warning => Color.FromArgb(204, 136, 27),
+            ValidationSeverity.Success => Color.FromArgb(35, 151, 100),
+            _ when hasFocus => theme.Primary,
+            _ when _hovered => ControlPaint.Dark(theme.Border),
+            _ => theme.Border
+        };
+        using var border = new Pen(borderColor, hasFocus ? 2 : 1);
         e.Graphics.FillPath(fill, path);
         e.Graphics.DrawPath(border, path);
         var actionWidth = _showSearchButton ? 36 : 0;
         var arrowCenterX = Width - actionWidth - 20;
-        var arrowCenterY = Height / 2;
+        var arrowCenterY = inputHeight / 2;
         using var arrowPen = new Pen(Enabled ? theme.Foreground : theme.Border, 1.6f)
         { LineJoin = LineJoin.Round, StartCap = LineCap.Round, EndCap = LineCap.Round };
         e.Graphics.DrawLines(arrowPen, [
             new Point(arrowCenterX - 4, arrowCenterY - 2),
             new Point(arrowCenterX, arrowCenterY + 2),
             new Point(arrowCenterX + 4, arrowCenterY - 2)]);
+        if (HasValidationMessage)
+            TextRenderer.DrawText(e.Graphics, _validationMessage, Font,
+                new Rectangle(2, inputHeight + 1, Math.Max(1, Width - 4), 20), borderColor,
+                TextFormatFlags.Left | TextFormatFlags.VerticalCenter |
+                TextFormatFlags.EndEllipsis | TextFormatFlags.SingleLine);
     }
 
     private void ApplyTheme()
