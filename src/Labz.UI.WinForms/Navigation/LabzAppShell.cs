@@ -236,6 +236,7 @@ public class LabzAppShell : UserControl
                     var button = CreateButton(page.Title, 190);
                     button.Height = 36;
                     button.Tag = page.Id;
+                    button.Resize += (_, _) => ApplyNavigationCorners(button);
                     button.TextAlign = ContentAlignment.MiddleLeft;
                     button.Padding = new Padding(16, 0, 0, 0);
                     button.AccessibleName = module.Title + " / " + page.Title;
@@ -262,6 +263,23 @@ public class LabzAppShell : UserControl
             control.Width = width;
     }
 
+    private static void ApplyNavigationCorners(Button button)
+    {
+        if (button.IsDisposed || button.Width <= 0 || button.Height <= 0) return;
+        const int radius = 6;
+        using var path = new System.Drawing.Drawing2D.GraphicsPath();
+        var diameter = radius * 2;
+        var bounds = new Rectangle(0, 0, button.Width - 1, button.Height - 1);
+        path.AddArc(bounds.Left, bounds.Top, diameter, diameter, 180, 90);
+        path.AddArc(bounds.Right - diameter, bounds.Top, diameter, diameter, 270, 90);
+        path.AddArc(bounds.Right - diameter, bounds.Bottom - diameter, diameter, diameter, 0, 90);
+        path.AddArc(bounds.Left, bounds.Bottom - diameter, diameter, diameter, 90, 90);
+        path.CloseFigure();
+        var previous = button.Region;
+        button.Region = new Region(path);
+        previous?.Dispose();
+    }
+
     private void UpdatePageSelection()
     {
         var theme = UiThemeManager.Current;
@@ -272,6 +290,7 @@ public class LabzAppShell : UserControl
             button.ForeColor = selected ? theme.Foreground : theme.MutedForeground;
             button.FlatAppearance.BorderSize = 0;
             button.FlatAppearance.MouseOverBackColor = theme.SelectionSurface;
+            ApplyNavigationCorners(button);
         }
     }
 
