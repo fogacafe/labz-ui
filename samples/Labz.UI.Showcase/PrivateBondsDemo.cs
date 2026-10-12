@@ -30,9 +30,8 @@ internal static class PrivateBondsDemo
         header.Controls.Add(title);
 
         var toolbar = new Panel { Dock = DockStyle.Top, Height = 48, BackColor = theme.Background };
-        var newButton = new Button { Text = "+ New trade", Width = 128, Height = 34, Dock = DockStyle.Right,
-            FlatStyle = FlatStyle.Flat, BackColor = theme.Primary, ForeColor = Color.White, Cursor = Cursors.Hand };
-        newButton.FlatAppearance.BorderSize = 0;
+        var newButton = new LabzButton { Text = "+ New trade", Width = 136, Height = 38, Dock = DockStyle.Right,
+            Variant = LabzButtonVariant.Solid, Cursor = Cursors.Hand };
         newButton.Click += (_, _) => createTrade();
         toolbar.Controls.Add(newButton);
 
@@ -53,9 +52,8 @@ internal static class PrivateBondsDemo
         var theme = UiThemeManager.Current;
         var trade = id is null ? null : Trades.FirstOrDefault(t => t.Id == id);
         var root = new Panel { Dock = DockStyle.Fill, AutoScroll = true, BackColor = theme.Background, Padding = new Padding(24) };
-        var title = new Label { Text = trade is null ? "New private credit trade" : $"Trade #{trade.Id}",
-            Dock = DockStyle.Top, Height = 64, ForeColor = theme.Foreground,
-            Font = new Font(SystemFonts.MessageBoxFont.FontFamily, 19f, FontStyle.Bold) };
+        var title = new LabzLabel { Text = trade is null ? "New private credit trade" : $"Trade #{trade.Id}",
+            Variant = LabzLabelVariant.Heading, AutoSize = false, Dock = DockStyle.Top, Height = 64 };
         var card = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, ColumnCount = 2, RowCount = 0,
             Padding = new Padding(20), BackColor = theme.Surface, Width = 740 };
         card.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 35));
@@ -63,43 +61,53 @@ internal static class PrivateBondsDemo
 
         var fields = new (string Label, string Value)[]
         {
-            ("Side (BUY / SELL)", trade?.Side ?? "BUY"),
+            ("Side", trade?.Side ?? "BUY"),
             ("Instrument", trade?.Instrument ?? ""),
             ("Issuer", trade?.Issuer ?? ""),
             ("Quantity", trade?.Quantity.ToString() ?? ""),
             ("Unit price", trade?.UnitPrice.ToString("0.00") ?? ""),
             ("Counterparty", trade?.Counterparty ?? ""),
         };
-        var editors = new List<TextBox>();
-        foreach (var (label, value) in fields)
+        var editors = new List<LabzTextBox>();
+        var side = new LabzComboBox { Dock = DockStyle.Fill, Margin = new Padding(6, 5, 6, 5) };
+        side.Items.AddRange(["BUY", "SELL"]);
+        side.SelectedIndex = trade?.Side == "SELL" ? 1 : 0;
+        for (var i = 0; i < fields.Length; i++)
         {
+            var (label, value) = fields[i];
             var row = card.RowCount++;
-            card.RowStyles.Add(new RowStyle(SizeType.Absolute, 52));
-            card.Controls.Add(new Label { Text = label, ForeColor = theme.MutedForeground,
-                Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft }, 0, row);
-            var input = new TextBox { Text = value, Dock = DockStyle.Fill, BorderStyle = BorderStyle.FixedSingle,
-                BackColor = theme.Background, ForeColor = theme.Foreground, Margin = new Padding(6, 10, 6, 10) };
+            card.RowStyles.Add(new RowStyle(SizeType.Absolute, 60));
+            card.Controls.Add(new LabzLabel { Text = label, Variant = LabzLabelVariant.Body,
+                Dock = DockStyle.Fill, AutoSize = false, TextAlign = ContentAlignment.MiddleLeft }, 0, row);
+            if (i == 0)
+            {
+                card.Controls.Add(side, 1, row);
+                // Keep field indexes aligned with the domain fields for validation below.
+                editors.Add(new LabzTextBox { Text = side.Text });
+                continue;
+            }
+            var input = new LabzTextBox { Text = value, Dock = DockStyle.Fill,
+                Margin = new Padding(6, 5, 6, 5) };
             editors.Add(input);
             card.Controls.Add(input, 1, row);
         }
-        var actions = new FlowLayoutPanel { Dock = DockStyle.Top, Height = 54, FlowDirection = FlowDirection.LeftToRight,
+        var actions = new FlowLayoutPanel { Dock = DockStyle.Top, Height = 60, FlowDirection = FlowDirection.LeftToRight,
             BackColor = theme.Surface, Padding = new Padding(20, 6, 0, 0) };
-        var save = new Button { Text = "Save demo trade", AutoSize = true, Height = 34,
-            BackColor = theme.Primary, ForeColor = Color.White, FlatStyle = FlatStyle.Flat };
-        save.FlatAppearance.BorderSize = 0;
-        var message = new Label { AutoSize = true, ForeColor = theme.MutedForeground, Padding = new Padding(12, 8, 0, 0) };
+        var save = new LabzButton { Text = "Save demo trade", Variant = LabzButtonVariant.Solid, Width = 150, Height = 38 };
+        var message = new LabzLabel { Text = "", Variant = LabzLabelVariant.Muted,
+            AutoSize = true, Padding = new Padding(12, 8, 0, 0) };
         save.Click += (_, _) =>
         {
             if (!decimal.TryParse(editors[3].Text, out var quantity) || quantity <= 0 ||
                 !decimal.TryParse(editors[4].Text, out var price) || price <= 0 ||
                 string.IsNullOrWhiteSpace(editors[1].Text) ||
-                (editors[0].Text.Trim().ToUpperInvariant() is not ("BUY" or "SELL")))
+                (side.Text is not ("BUY" or "SELL")))
             {
                 message.Text = "Check side, instrument, quantity and price.";
                 return;
             }
             var next = new Trade(trade?.Id ?? (Trades.Max(t => t.Id) + 1),
-                editors[1].Text.Trim(), editors[2].Text.Trim(), editors[0].Text.Trim().ToUpperInvariant(),
+                editors[1].Text.Trim(), editors[2].Text.Trim(), side.Text,
                 quantity, price, editors[5].Text.Trim(), "DRAFT");
             if (trade is null) Trades.Add(next);
             else
